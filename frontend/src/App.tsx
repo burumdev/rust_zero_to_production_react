@@ -4,14 +4,14 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 import Header from '@components/Header';
 import Modal from '@components/Modal';
-import LoginModal from '@user/components/LoginModal';
+import NewsletterModal from '@user/components/NewsletterModal';
 
 import './App.css';
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isLoginModalOpen, setLoginModalOpen] = useState(true);
+  const [isNewsletterModalOpen, setNewsletterModalOpen] = useState(true);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -19,14 +19,18 @@ const App = () => {
       <div className="flex flex-col items-center justify-center">
         <img className="-mt-[20px]" src="/images/logo.svg" />
         <p className="w-[640px] italic text-center text-sm">
-          A place where dreams turn into nested, <br /> self-referential
-          nightmares.
+          A place where dreams turn into nested,
+          <br />
+          self-referential nightmares.
           <br />
           But you don't remember them when you wake up.
         </p>
       </div>
-      <Modal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)}>
-        <LoginModal />
+      <Modal
+        isOpen={isNewsletterModalOpen}
+        onClose={() => setNewsletterModalOpen(false)}
+      >
+        <NewsletterModal />
       </Modal>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

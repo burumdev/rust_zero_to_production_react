@@ -3,6 +3,8 @@ interface ButtonProps {
   backgroundClass?: string;
   dropShadowColor?: string;
   text?: string;
+  isDisabled?: boolean;
+  isLoading?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -10,6 +12,8 @@ const Button: React.FC<ButtonProps> = ({
   text,
   backgroundClass = 'bg-yellow',
   dropShadowColor = 'yellow',
+  isDisabled = false,
+  isLoading = false,
 }) => {
   return (
     <div
@@ -21,8 +25,9 @@ const Button: React.FC<ButtonProps> = ({
       <button
         className={`step-box flex justify-center items-center h-full px-3 cursor-pointer ${backgroundClass}`}
         onClick={() => onClick()}
+        disabled={isDisabled || isLoading}
       >
-        {text}
+        <span className={isLoading ? 'blinking' : undefined}>{text}</span>
       </button>
     </div>
   );

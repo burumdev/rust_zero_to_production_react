@@ -2,6 +2,7 @@
 @import './styles/fonts.css';
 @import './styles/retro.css';
 @import './styles/theme.css';
+@import './styles/animations.css';
 
 * {
   box-sizing: border-box;
@@ -16,4 +17,11 @@ body {
   font-family: 'Press Start 2P', Arial, sans-serif;
   background-image: linear-gradient(to bottom, #020917, #101725);
   background-repeat: no-repeat;
+}
+
+dialog {
+  color: var(--color-darkgray);
+  *:disabled {
+    color: var(--color-darkgray-disabled);
+  }
 }

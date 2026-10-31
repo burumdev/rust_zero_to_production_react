@@ -1,0 +1,9 @@
+@keyframes blink-anim {
+  to {
+    opacity: 0;
+  }
+}
+
+.blinking {
+  animation: blink-anim 0.2s steps(5, start) infinite;
+}
