@@ -1,4 +1,4 @@
-use actix_web::{HttpResponse, ResponseError, http::StatusCode, web};
+use actix_web::{HttpResponse, Responder, ResponseError, http::StatusCode, web};
 use anyhow::Context;
 use chrono::Utc;
 use rand::{RngExt, distr::Alphanumeric};
@@ -7,7 +7,7 @@ use sqlx::{Executor, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    domain::subscriber::NewSubscriber,
+    domain::{common::SuccessResponse, subscriber::NewSubscriber},
     email_client::EmailClient,
     startup::{ApplicationBaseUrl, ApplicationPort},
 };
@@ -50,6 +50,20 @@ impl ResponseError for SubscribeError {
             SubscribeError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
+
+    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        let message_string = match self {
+            SubscribeError::ValidationError(_) => "Form has invalid values.".to_owned(),
+            SubscribeError::UnexpectedError(_) => {
+                "A technical error occured. Please try again later.".to_owned()
+            }
+        };
+
+        HttpResponse::build(self.status_code()).json(SuccessResponse {
+            success: false,
+            message: message_string,
+        })
+    }
 }
 impl std::fmt::Debug for SubscribeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -79,7 +93,7 @@ pub async fn subscribe(
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,
     port: web::Data<ApplicationPort>,
-) -> Result<HttpResponse, SubscribeError> {
+) -> Result<impl Responder, SubscribeError> {
     let new_subscriber = form.0.try_into()?;
 
     let mut transaction = db
@@ -116,7 +130,10 @@ pub async fn subscribe(
     .await
     .context("Failed to send confirmation email for subscription.")?;
 
-    Ok(HttpResponse::Ok().finish())
+    Ok(HttpResponse::Ok().json(SuccessResponse {
+        success: true,
+        message: "Thank you for joining our newsletter!".to_owned(),
+    }))
 }
 
 #[tracing::instrument(
