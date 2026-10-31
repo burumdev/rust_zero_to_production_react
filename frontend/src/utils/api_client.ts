@@ -24,11 +24,8 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    // Prevent premature errors from .json() to propagate instead of
-    // well formed error report
-    const body = await res.json().catch(() => null);
-    // Always show the same error with error payload
-    throw new ApiError(res.status, res.statusText, body);
+    const body = await res.json();
+    throw body;
   }
 
   // 1. Explicit no-content statuses (204, 205) — the spec says no body.

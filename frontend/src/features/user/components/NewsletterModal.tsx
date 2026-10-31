@@ -10,7 +10,14 @@ type FormField = 'email' | 'name';
 type FormRecord = Record<FormField, string>;
 
 const NewsletterModal = () => {
-  const newsletterRegister = useUserNewsletterRegister();
+  const {
+    mutate: sendForm,
+    data: successData,
+    error: errorData,
+    isPending,
+    isError,
+    isSuccess,
+  } = useUserNewsletterRegister();
 
   const initialFormData: Record<FormField, string> = {
     email: '',
@@ -21,8 +28,6 @@ const NewsletterModal = () => {
     useState<FormRecord>(initialFormData);
   const [isFormSubmitButtonDisabled, setFormSubmitButtonDisabled] =
     useState(true);
-  const [isFormSubmitButtonLoading, setFormSubmitButtonLoading] =
-    useState(false);
 
   const resetFormDataError = (field: FormField | 'all') => {
     if (field === 'all') {
@@ -86,13 +91,8 @@ const NewsletterModal = () => {
   }, [formDataErrors]);
 
   const handleSubmit = () => {
-    setFormSubmitButtonLoading(true);
-    newsletterRegister.mutate(formData as UserNewsletterRegisterRequest, {
-      onSuccess: () => console.log('TODO: User registration success.'),
-      onError: (e) =>
-        console.error(`TODO: Handle form submit error. Error: ${e}`),
+    sendForm(formData as UserNewsletterRegisterRequest, {
       onSettled: () => {
-        setFormSubmitButtonLoading(false);
         resetFormDataError('all');
       },
     });
@@ -122,14 +122,20 @@ const NewsletterModal = () => {
           errorStr={formDataErrors['name']}
         />
       </div>
+      <div
+        className={`h-forminput flex items-end mt-2 text-xs ${isSuccess ? 'text-success' : 'text-error'}`}
+      >
+        {isSuccess && successData.message}
+        {isError && errorData.message}
+      </div>
       <div className="mt-4 h-forminput flex justify-end">
         <Button
           onClick={handleSubmit}
           text="JOIN"
           backgroundClass="bg-highlight"
           dropShadowColor="highlight-darker"
-          isDisabled={isFormSubmitButtonDisabled}
-          isLoading={isFormSubmitButtonLoading}
+          isDisabled={isFormSubmitButtonDisabled || isPending}
+          isLoading={isPending}
         />
       </div>
     </div>

@@ -2,6 +2,7 @@
   /* COLORS */
   --color-white: #eff;
   --color-error: #ff0019;
+  --color-success: #208820;
   --color-highlight: #00ffff;
   --color-highlight-darker: #005b5b;
   --color-section: #1c0047;
@@ -9,7 +10,7 @@
   --color-darkgray: #333;
   --color-darkgray-disabled: #888;
   /* TEXT */
-  --text-xs: 0.5rem;
+  --text-xs: 0.6rem;
   --text-sm: 0.75rem;
   --text-base: 1rem;
   --text-lg: 1.5rem;

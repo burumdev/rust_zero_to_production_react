@@ -25,7 +25,7 @@ const Button: React.FC<ButtonProps> = ({
       <button
         className={`step-box flex justify-center items-center h-full px-3 cursor-pointer ${backgroundClass}`}
         onClick={() => onClick()}
-        disabled={isDisabled || isLoading}
+        disabled={isDisabled}
       >
         <span className={isLoading ? 'blinking' : undefined}>{text}</span>
       </button>
