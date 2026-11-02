@@ -12,7 +12,7 @@ Some of the libraries used in the book are used with original downgraded version
 * SSL support is disabled
 * Mailtrap API for email testing instead of Postmark. The free tier supports only text based emails.
 * Email testing is done based on direct response from Mailtrap server instead of a mock server.
-Successful mailtrap API send requests return a list `message_id`s (one for single emails) and this `message_id` is used to further query the mailtrap API for the text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
+Successful mailtrap API send requests return a list of `message_id`s (one for single emails) and this `message_id` is used to further query the mailtrap API for the text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
 * The `modname/mod.rs` directory structure is not used. The more preferred approach `modname.rs` in root and submodules in `modname` directory is used.
 
 # Running
@@ -22,11 +22,12 @@ with your local credentials. Some of the items in the file are mailtrap specific
 * You'll need `Node.js` and `pnpm` installed for the frontend build.
 * run `pnpm install` in `frontend` directory to pull frontend dependencies.
 
-## Running on the local machine
-* run `./scripts/init_db.sh`. This will also migrate the database
-* run `cargo run`
+## Running on the local machine (development mode)
+* Run `./scripts/init_db.sh`. This will also migrate the database
+* Run `cargo run`
+* In `frontend` directory run `pnpm run dev` to launch frontend development server
 
-## Running containerized in Docker
-* run `docker compose up`
-* run `sqlx migrate run`
-
+## Running containerized in Docker (production mode)
+* Run `docker compose up`
+* Run `sqlx migrate run`
+* Navigate to `http://localhost:8000` to view the production build of the frontend
