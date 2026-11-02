@@ -7,6 +7,7 @@ use sqlx::{Executor, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
+    configuration::AppEnvironment,
     domain::{common::SuccessResponse, subscriber::NewSubscriber},
     email_client::EmailClient,
     startup::{ApplicationBaseUrl, ApplicationPort},
@@ -62,6 +63,7 @@ impl ResponseError for SubscribeError {
         HttpResponse::build(self.status_code()).json(SuccessResponse {
             success: false,
             message: message_string,
+            data: None,
         })
     }
 }
@@ -93,6 +95,7 @@ pub async fn subscribe(
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,
     port: web::Data<ApplicationPort>,
+    environment: web::Data<AppEnvironment>,
 ) -> Result<impl Responder, SubscribeError> {
     let new_subscriber = form.0.try_into()?;
 
@@ -120,7 +123,7 @@ pub async fn subscribe(
     if port.0 != 80 && port.0 != 0 {
         port_str.push_str(&format!(":{}", port.0));
     };
-    send_confirmation_email(
+    let response = send_confirmation_email(
         &email_client,
         new_subscriber,
         &base_url.0,
@@ -130,9 +133,15 @@ pub async fn subscribe(
     .await
     .context("Failed to send confirmation email for subscription.")?;
 
+    let data = match environment.get_ref() {
+        AppEnvironment::Local => Some(response.json().await.unwrap()),
+        AppEnvironment::Production => None,
+    };
+
     Ok(HttpResponse::Ok().json(SuccessResponse {
         success: true,
         message: "Thank you for joining our newsletter!".to_owned(),
+        data,
     }))
 }
 
@@ -146,7 +155,7 @@ pub async fn send_confirmation_email(
     base_url: &str,
     port: &str,
     subscription_token: &str,
-) -> Result<(), reqwest::Error> {
+) -> Result<reqwest::Response, reqwest::Error> {
     let confirmation_link =
         format!("{base_url}{port}/subscriptions/confirm?subscription_token={subscription_token}");
 

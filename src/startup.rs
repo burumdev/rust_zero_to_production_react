@@ -7,10 +7,11 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    configuration::{Configuration, DatabaseConfiguration},
+    configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
     routes::{
-        health_check::health_check, subscriptions::subscribe, subscriptions_confirm::confirm,
+        health_check::health_check, newsletters::publish_newsletter, subscriptions::subscribe,
+        subscriptions_confirm::confirm,
     },
 };
 
@@ -35,6 +36,8 @@ impl Application {
             "Tyrell Corporation".to_string(),
             configuration.email_client.authorization_token,
             timeout,
+            configuration.email_client.sandbox_id,
+            configuration.email_client.sandbox_base_url,
         );
 
         let address = format!(
@@ -51,6 +54,7 @@ impl Application {
             configuration.application.base_url,
             configuration.application.port,
             configuration.application.frontend_dev_origin,
+            configuration.application.environment,
         )?;
 
         Ok(Self { port, server })
@@ -79,11 +83,13 @@ pub fn run(
     base_url: String,
     port: u16,
     frontend_dev_origin: String,
+    app_environment: AppEnvironment,
 ) -> Result<Server, std::io::Error> {
     let db = web::Data::new(db);
     let email_client = web::Data::new(email_client);
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
     let port = web::Data::new(ApplicationPort(port));
+    let environment = web::Data::new(app_environment);
 
     let server = HttpServer::new(move || {
         let cors = Cors::default()
@@ -102,12 +108,14 @@ pub fn run(
                 web::scope("/api")
                     .route("/health_check", web::get().to(health_check))
                     .route("/subscriptions", web::post().to(subscribe))
-                    .route("/subscriptions/confirm", web::get().to(confirm)),
+                    .route("/subscriptions/confirm", web::get().to(confirm))
+                    .route("/newsletters", web::post().to(publish_newsletter)),
             )
             .app_data(db.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
             .app_data(port.clone())
+            .app_data(environment.clone())
             .service(
                 Files::new("/", "./frontend/dist")
                     .index_file("index.html")

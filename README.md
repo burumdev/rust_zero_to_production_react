@@ -12,13 +12,15 @@ Some of the libraries used in the book are used with original downgraded version
 * SSL support is disabled
 * Mailtrap API for email testing instead of Postmark. The free tier supports only text based emails.
 * Email testing is done based on direct response from Mailtrap server instead of a mock server.
+Successful mailtrap API send requests return a list `message_id`s (one for single emails) and this `message_id` is used to further query the mailtrap API for the text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
 * The `modname/mod.rs` directory structure is not used. The more preferred approach `modname.rs` in root and submodules in `modname` directory is used.
 
 # Running
 Before running the app, make a copy of `.env-example` file as `.env` and fill in the credentials there
-with your local credentials. And run `pnpm install` in `frontend` directory to pull frontend dependencies.
+with your local credentials. Some of the items in the file are mailtrap specific and based on their API.
 * You'll need `psql` on your system and `sqlx-cli` on your Rust installation.
 * You'll need `Node.js` and `pnpm` installed for the frontend build.
+* run `pnpm install` in `frontend` directory to pull frontend dependencies.
 
 ## Running on the local machine
 * run `./scripts/init_db.sh`. This will also migrate the database

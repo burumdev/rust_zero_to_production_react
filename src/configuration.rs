@@ -11,6 +11,8 @@ pub struct Configuration {
     pub email_client: EmailClientConfiguration,
 }
 
+#[derive(serde::Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum AppEnvironment {
     Local,
     Production,
@@ -47,6 +49,7 @@ pub struct ApplicationConfiguration {
     pub host: String,
     pub base_url: String,
     pub frontend_dev_origin: String,
+    pub environment: AppEnvironment,
 }
 
 #[derive(serde::Deserialize, Clone)]
@@ -76,9 +79,11 @@ impl DatabaseConfiguration {
 #[derive(serde::Deserialize, Clone)]
 pub struct EmailClientConfiguration {
     pub base_url: String,
+    pub sandbox_base_url: String,
     pub sender_email: String,
     pub authorization_token: SecretString,
     pub timeout_milliseconds: u64,
+    pub sandbox_id: String,
 }
 
 impl EmailClientConfiguration {

@@ -2,5 +2,6 @@ application:
   host: 127.0.0.1
   base_url: "http://127.0.0.1"
   frontend_dev_origin: "http://localhost:3000"
+  environment: "local"
 database:
   host: "localhost"

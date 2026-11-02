@@ -4,6 +4,7 @@ use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
     configuration::{DatabaseConfiguration, get_configuration},
+    email_client::EmailClient,
     startup::{Application, get_connection_pool},
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -11,17 +12,20 @@ use zero2prod::{
 pub struct TestApp {
     pub address: String,
     pub db: PgPool,
+    pub email_client: EmailClient,
 }
 
 impl TestApp {
     pub async fn post_subscriptions(&self, json_str: &str) -> reqwest::Response {
-        reqwest::Client::new()
+        let response = reqwest::Client::new()
             .post(&format!("{}/api/subscriptions", &self.address))
             .header("Content-Type", "application/json")
             .body(json_str.to_owned())
             .send()
             .await
-            .expect("Failed to execute request.")
+            .expect("Failed to execute request.");
+
+        response
     }
 }
 
@@ -65,9 +69,20 @@ pub async fn spawn_app() -> TestApp {
     let port = app.port();
     let _ = tokio::spawn(app.run_until_stopped());
 
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url.clone(),
+        configuration.email_client.sender().unwrap(),
+        "Tyrell Corporation".to_owned(),
+        configuration.email_client.authorization_token.clone(),
+        configuration.email_client.timeout(),
+        configuration.email_client.sandbox_id,
+        configuration.email_client.sandbox_base_url.clone(),
+    );
+
     TestApp {
         address: format!("http://127.0.0.1:{}", port),
         db: get_connection_pool(&configuration.database),
+        email_client,
     }
 }
 
