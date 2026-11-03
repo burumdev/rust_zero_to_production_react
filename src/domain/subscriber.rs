@@ -40,7 +40,7 @@ impl AsRef<str> for SubscriberName {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValidEmail(String);
 impl ValidEmail {
     pub fn parse(s: String) -> Result<Self, String> {
@@ -54,6 +54,18 @@ impl ValidEmail {
 impl AsRef<str> for ValidEmail {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+impl TryFrom<String> for ValidEmail {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        Self::parse(value)
+    }
+}
+impl std::fmt::Display for ValidEmail {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Calling the fmt trait method of the inner string
+        self.0.fmt(f)
     }
 }
 

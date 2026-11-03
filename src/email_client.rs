@@ -70,7 +70,7 @@ impl EmailClient {
     // Send an email to the test sandbox.
     pub async fn send_email(
         &self,
-        recipient: ValidEmail,
+        recipient: &ValidEmail,
         subject: &str,
         content: &str,
     ) -> Result<reqwest::Response, reqwest::Error> {
@@ -194,7 +194,7 @@ mod tests {
             .await;
 
         let _ = email_client
-            .send_email(email(), &subject(), &content())
+            .send_email(&email(), &subject(), &content())
             .await;
     }
 
@@ -210,7 +210,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content())
+            .send_email(&email(), &subject(), &content())
             .await;
 
         assert_ok!(outcome);
@@ -228,7 +228,7 @@ mod tests {
             .await;
 
         let outcome = email_client
-            .send_email(email(), &subject(), &content())
+            .send_email(&email(), &subject(), &content())
             .await;
 
         assert_err!(outcome);
@@ -251,7 +251,7 @@ mod tests {
 
         // Act
         let outcome = email_client
-            .send_email(email(), &subject(), &content())
+            .send_email(&email(), &subject(), &content())
             .await;
 
         assert_err!(outcome);

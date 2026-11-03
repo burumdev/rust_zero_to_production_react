@@ -52,7 +52,7 @@ impl Application {
             db,
             email_client,
             configuration.application.base_url,
-            configuration.application.port,
+            port,
             configuration.application.frontend_dev_origin,
             configuration.application.environment,
         )?;

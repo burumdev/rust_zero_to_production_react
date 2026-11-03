@@ -26,18 +26,10 @@ async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
 
     let newsletter_body = serde_json::json!({
         "title": "Test Newsletter Title",
-        "content": {
-            "text": "Newsletter body.",
-            "html": "<p>Newsletter body as HTML</p>",
-        }
+        "content": "Newsletter body.",
     });
 
-    let response = reqwest::Client::new()
-        .post(&format!("{}/api/newsletters", &test_app.address))
-        .json(&newsletter_body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
+    let response = test_app.post_newsletters(newsletter_body).await;
 
     assert_eq!(response.status().as_u16(), 200);
 }
@@ -70,29 +62,49 @@ async fn it_delivers_newsletters_to_confirmed_subscribers() {
     for link in link_finder.links(&email_txt) {
         if link.as_str().contains("/confirm?") {
             reqwest::Client::new()
-                .post(link.as_str())
+                .get(link.as_str())
                 .send()
                 .await
                 .expect("Failed To execute request.");
 
             let newsletter_body = serde_json::json!({
                 "title": "Test Newsletter Title",
-                "content": {
-                    "text": "Newsletter body.",
-                    "html": "<p>Newsletter body as HTML</p>",
-                }
+                "content": "Newsletter body.",
             });
 
-            let response = reqwest::Client::new()
-                .post(&format!("{}/api/newsletters", &test_app.address))
-                .json(&newsletter_body)
-                .send()
-                .await
-                .expect("Failed to execute request.");
+            let response = test_app.post_newsletters(newsletter_body).await;
 
             assert_eq!(response.status().as_u16(), 200);
         } else {
             panic!("Email confirm link was malformed!");
         }
+    }
+}
+
+#[tokio::test]
+async fn it_returns_400_for_invalid_newsletter_data() {
+    let test_app = spawn_app().await;
+    let test_cases = vec![
+        (
+            serde_json::json!({
+                "content": "Newsletter body as plain text",
+            }),
+            "missing title",
+        ),
+        (
+            serde_json::json!({"title": "Newsletter!"}),
+            "missing content",
+        ),
+    ];
+
+    for (invalid_body, error_message) in test_cases {
+        let response = test_app.post_newsletters(invalid_body).await;
+
+        assert_eq!(
+            response.status().as_u16(),
+            400,
+            "The API did not return 400 Bad Request when the payload was {}.",
+            error_message
+        )
     }
 }

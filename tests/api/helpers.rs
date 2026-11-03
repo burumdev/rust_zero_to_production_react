@@ -27,6 +27,17 @@ impl TestApp {
 
         response
     }
+
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let response = reqwest::Client::new()
+            .post(format!("{}/api/newsletters", &self.address))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        response
+    }
 }
 
 static TRACING: LazyLock<()> = LazyLock::new(|| {
