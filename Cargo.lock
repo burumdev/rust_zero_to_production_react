@@ -3730,6 +3730,7 @@ dependencies = [
  "actix-files",
  "actix-web",
  "anyhow",
+ "base64 0.23.1",
  "chrono",
  "claims",
  "config",

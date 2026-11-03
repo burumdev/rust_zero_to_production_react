@@ -1,8 +1,59 @@
-use actix_web::{HttpResponse, ResponseError, http::StatusCode, web};
+use actix_web::{
+    HttpRequest, HttpResponse, ResponseError,
+    http::{
+        StatusCode,
+        header::{self, HeaderMap, HeaderValue},
+    },
+    web,
+};
 use anyhow::Context;
+use base64::{
+    Engine, alphabet,
+    engine::{GeneralPurpose, GeneralPurposeConfig},
+};
+use secrecy::ExposeSecret;
+use secrecy::SecretString;
 use sqlx::PgPool;
 
 use crate::{domain::subscriber::ValidEmail, email_client::EmailClient, utils::error_chain_fmt};
+
+struct Credentials {
+    username: String,
+    password: SecretString,
+}
+
+fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
+    let header_value = headers
+        .get("Authorization")
+        .context("The 'Authorization' header was missing")?
+        .to_str()
+        .context("The 'Authorization' header was not a valid UTF8 string.")?;
+    let base64encoded_segment = header_value
+        .strip_prefix("Basic ")
+        .context("The authorization scheme was not 'Basic'.")?;
+
+    let base64engine = GeneralPurpose::new(&alphabet::STANDARD, GeneralPurposeConfig::default());
+    let decoded_bytes = base64engine
+        .decode(base64encoded_segment)
+        .context("Failed to base64-decode 'Basic' credentials.")?;
+    let decoded_credentials = String::from_utf8(decoded_bytes)
+        .context("The decoded credential string is not valid UTF8.")?;
+
+    let mut credentials = decoded_credentials.splitn(2, ':');
+    let username = credentials
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("A username must be provided in 'Basic' auth."))?
+        .to_string();
+    let password = credentials
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("A password must be provided in 'Basic' auth."))?
+        .to_string();
+
+    Ok(Credentials {
+        username,
+        password: SecretString::from(password),
+    })
+}
 
 #[derive(serde::Deserialize)]
 pub struct NewsletterBody {
@@ -16,6 +67,8 @@ struct ConfirmedSubscriber {
 
 #[derive(thiserror::Error)]
 pub enum PublishError {
+    #[error("Authentication failed")]
+    AuthError(#[source] anyhow::Error),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -28,15 +81,44 @@ impl ResponseError for PublishError {
     fn status_code(&self) -> StatusCode {
         match self {
             PublishError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            PublishError::AuthError(_) => StatusCode::UNAUTHORIZED,
+        }
+    }
+    fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        match self {
+            PublishError::UnexpectedError(_) => {
+                HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+            PublishError::AuthError(_) => {
+                let mut response = HttpResponse::new(StatusCode::UNAUTHORIZED);
+                let header_value = HeaderValue::from_str(r#"Basic realm="publish""#).unwrap();
+
+                response
+                    .headers_mut()
+                    .insert(header::WWW_AUTHENTICATE, header_value);
+
+                response
+            }
         }
     }
 }
 
+#[tracing::instrument(
+    name = "Publish a newsletter issue",
+    skip_all,
+    fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
+)]
 pub async fn publish_newsletter(
     body: web::Json<NewsletterBody>,
     db: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
+    request: HttpRequest,
 ) -> Result<HttpResponse, PublishError> {
+    let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
+    tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
+    let user_id = validate_credentials(credentials, &db).await?;
+    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+
     let confirmed_subscribers = get_confirmed_subscribers(&db).await?;
     for subscriber in confirmed_subscribers {
         match subscriber {
@@ -59,6 +141,30 @@ pub async fn publish_newsletter(
     }
 
     Ok(HttpResponse::Ok().finish())
+}
+
+async fn validate_credentials(
+    credentials: Credentials,
+    db: &PgPool,
+) -> Result<uuid::Uuid, PublishError> {
+    let user_id: Option<_> = sqlx::query!(
+        r#"
+            SELECT user_id
+            FROM users
+            WHERE username = $1 AND password = $2
+        "#,
+        credentials.username,
+        credentials.password.expose_secret()
+    )
+    .fetch_optional(db)
+    .await
+    .context("Failed to perform query to validate credentials.")
+    .map_err(PublishError::UnexpectedError)?;
+
+    user_id
+        .map(|row| row.user_id)
+        .ok_or_else(|| anyhow::anyhow!("Invalid username or password."))
+        .map_err(PublishError::AuthError)
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip_all)]

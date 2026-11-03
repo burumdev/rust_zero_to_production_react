@@ -29,14 +29,25 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let (username, password) = self.get_test_user().await;
         let response = reqwest::Client::new()
             .post(format!("{}/api/newsletters", &self.address))
+            .basic_auth(username, Some(password))
             .json(&body)
             .send()
             .await
             .expect("Failed to execute request.");
 
         response
+    }
+
+    pub async fn get_test_user(&self) -> (String, String) {
+        let row = sqlx::query!("SELECT username, password FROM users LIMIT 1")
+            .fetch_one(&self.db)
+            .await
+            .expect("Failed to create test users.");
+
+        (row.username, row.password)
     }
 }
 
@@ -90,11 +101,27 @@ pub async fn spawn_app() -> TestApp {
         configuration.email_client.sandbox_base_url.clone(),
     );
 
-    TestApp {
+    let test_app = TestApp {
         address: format!("http://127.0.0.1:{}", port),
         db: get_connection_pool(&configuration.database),
         email_client,
-    }
+    };
+
+    add_test_user(&test_app.db).await;
+
+    test_app
+}
+
+async fn add_test_user(db: &PgPool) {
+    sqlx::query!(
+        "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3)",
+        Uuid::new_v4(),
+        Uuid::new_v4().to_string(),
+        Uuid::new_v4().to_string(),
+    )
+    .execute(db)
+    .await
+    .expect("Failed to create test user.");
 }
 
 async fn configure_database(config: &DatabaseConfiguration) {
