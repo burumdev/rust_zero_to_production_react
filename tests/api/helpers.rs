@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+use sha3::Digest;
 use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
@@ -13,6 +14,7 @@ pub struct TestApp {
     pub address: String,
     pub db: PgPool,
     pub email_client: EmailClient,
+    test_user: TestUser,
 }
 
 impl TestApp {
@@ -29,10 +31,9 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        let (username, password) = self.get_test_user().await;
         let response = reqwest::Client::new()
             .post(format!("{}/api/newsletters", &self.address))
-            .basic_auth(username, Some(password))
+            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
             .await
@@ -40,14 +41,36 @@ impl TestApp {
 
         response
     }
+}
 
-    pub async fn get_test_user(&self) -> (String, String) {
-        let row = sqlx::query!("SELECT username, password FROM users LIMIT 1")
-            .fetch_one(&self.db)
-            .await
-            .expect("Failed to create test users.");
+pub struct TestUser {
+    pub user_id: Uuid,
+    pub username: String,
+    pub password: String,
+}
 
-        (row.username, row.password)
+impl TestUser {
+    pub fn generate() -> Self {
+        Self {
+            user_id: Uuid::new_v4(),
+            username: Uuid::new_v4().to_string(),
+            password: Uuid::new_v4().to_string(),
+        }
+    }
+
+    async fn store(&self, db: &PgPool) {
+        let password_hash = sha3::Sha3_256::digest(self.password.as_bytes());
+        let password_hash = hex::encode(password_hash);
+        sqlx::query!(
+            "INSERT INTO users (user_id, username, password_hash)
+            VALUES ($1, $2, $3)",
+            self.user_id,
+            self.username,
+            password_hash,
+        )
+        .execute(db)
+        .await
+        .expect("Failed to store test user.");
     }
 }
 
@@ -94,7 +117,7 @@ pub async fn spawn_app() -> TestApp {
     let email_client = EmailClient::new(
         configuration.email_client.base_url.clone(),
         configuration.email_client.sender().unwrap(),
-        "Tyrell Corporation".to_owned(),
+        "Tyrell Corporation Testing Department".to_owned(),
         configuration.email_client.authorization_token.clone(),
         configuration.email_client.timeout(),
         configuration.email_client.sandbox_id,
@@ -105,23 +128,12 @@ pub async fn spawn_app() -> TestApp {
         address: format!("http://127.0.0.1:{}", port),
         db: get_connection_pool(&configuration.database),
         email_client,
+        test_user: TestUser::generate(),
     };
 
-    add_test_user(&test_app.db).await;
+    test_app.test_user.store(&test_app.db).await;
 
     test_app
-}
-
-async fn add_test_user(db: &PgPool) {
-    sqlx::query!(
-        "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3)",
-        Uuid::new_v4(),
-        Uuid::new_v4().to_string(),
-        Uuid::new_v4().to_string(),
-    )
-    .execute(db)
-    .await
-    .expect("Failed to create test user.");
 }
 
 async fn configure_database(config: &DatabaseConfiguration) {
