@@ -1,4 +1,5 @@
 use linkify::{LinkFinder, LinkKind};
+use uuid::Uuid;
 use zero2prod::{domain::common::SuccessResponse, email_client::EmailSuccessResponse};
 
 use crate::helpers::{TestApp, spawn_app};
@@ -118,6 +119,55 @@ async fn it_rejects_newsletter_requests_missing_authorization() {
         .json(&serde_json::json!({
             "title": "Newsletter Title",
             "content": "Newsletter body as plain text",
+        }))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(401, response.status().as_u16());
+    assert_eq!(
+        r#"Basic realm="publish""#,
+        response.headers()["WWW-Authenticate"]
+    );
+}
+
+#[tokio::test]
+async fn it_rejects_non_existing_user_login() {
+    let test_app = spawn_app().await;
+    let username = Uuid::new_v4().to_string();
+    let password = Uuid::new_v4().to_string();
+
+    let response = reqwest::Client::new()
+        .post(format!("{}/api/newsletters", &test_app.address))
+        .basic_auth(username, Some(password))
+        .json(&serde_json::json!({
+            "title": "Newsletter title",
+            "content": "Newsletter body. Non existing user is rejected.",
+        }))
+        .send()
+        .await
+        .expect("Failed to execute request.");
+
+    assert_eq!(401, response.status().as_u16());
+    assert_eq!(
+        r#"Basic realm="publish""#,
+        response.headers()["WWW-Authenticate"]
+    );
+}
+
+#[tokio::test]
+async fn it_rejects_wrong_password_login() {
+    let test_app = spawn_app().await;
+    let username = test_app.test_user.username;
+    let password = Uuid::new_v4().to_string();
+    assert_ne!(test_app.test_user.password, password);
+
+    let response = reqwest::Client::new()
+        .post(format!("{}/api/newsletters", &test_app.address))
+        .basic_auth(username, Some(password))
+        .json(&serde_json::json!({
+            "title": "Newsletter title",
+            "content": "Newsletter body. Non existing user is rejected.",
         }))
         .send()
         .await

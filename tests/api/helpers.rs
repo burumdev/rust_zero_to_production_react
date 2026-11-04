@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use argon2::{Argon2, PasswordHasher};
+use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
@@ -14,7 +14,7 @@ pub struct TestApp {
     pub address: String,
     pub db: PgPool,
     pub email_client: EmailClient,
-    test_user: TestUser,
+    pub test_user: TestUser,
 }
 
 impl TestApp {
@@ -59,10 +59,14 @@ impl TestUser {
     }
 
     async fn store(&self, db: &PgPool) {
-        let password_hash = Argon2::default()
-            .hash_password(self.password.as_bytes())
-            .unwrap()
-            .to_string();
+        let password_hash = Argon2::new(
+            Algorithm::Argon2id,
+            Version::V0x13,
+            Params::new(15000, 2, 1, None).unwrap(),
+        )
+        .hash_password(self.password.as_bytes())
+        .unwrap()
+        .to_string();
 
         sqlx::query!(
             "INSERT INTO users (user_id, username, password_hash)
