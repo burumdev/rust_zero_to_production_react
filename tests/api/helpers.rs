@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use sha3::Digest;
+use argon2::{Argon2, PasswordHasher};
 use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
@@ -59,8 +59,11 @@ impl TestUser {
     }
 
     async fn store(&self, db: &PgPool) {
-        let password_hash = sha3::Sha3_256::digest(self.password.as_bytes());
-        let password_hash = hex::encode(password_hash);
+        let password_hash = Argon2::default()
+            .hash_password(self.password.as_bytes())
+            .unwrap()
+            .to_string();
+
         sqlx::query!(
             "INSERT INTO users (user_id, username, password_hash)
             VALUES ($1, $2, $3)",
