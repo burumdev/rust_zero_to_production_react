@@ -36,6 +36,8 @@
     }
   },
   "include": [
-    "src"
+    "src",
+    "common_types.ts",
+    "Login.tsx"
   ]
 }

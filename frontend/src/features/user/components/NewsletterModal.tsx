@@ -105,7 +105,7 @@ const NewsletterModal = () => {
         Enter your email and name to join our newsletter and gain access to our
         exclusive chat rooms.
       </p>
-      <div className="mt-4 h-forminput">
+      <div className="mt-6 h-forminput">
         <TextInput
           placeholder="E-mail*"
           isFocused
@@ -114,7 +114,7 @@ const NewsletterModal = () => {
           errorStr={formDataErrors['email']}
         />
       </div>
-      <div className="mt-4 h-forminput">
+      <div className="mt-6 h-forminput">
         <TextInput
           placeholder="Name*"
           onChange={(e: any) => handleFormDataChange('name', e.target.value)}

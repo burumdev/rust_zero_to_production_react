@@ -17,11 +17,11 @@ body {
   font-family: 'Press Start 2P', Arial, sans-serif;
   background-image: linear-gradient(to bottom, #020917, #101725);
   background-repeat: no-repeat;
+  *:disabled {
+    color: var(--color-darkgray-disabled);
+  }
 }
 
 dialog {
   color: var(--color-darkgray);
-  *:disabled {
-    color: var(--color-darkgray-disabled);
-  }
 }

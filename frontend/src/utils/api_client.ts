@@ -24,8 +24,16 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const body = await res.json();
-    throw body;
+    switch (res.status) {
+      case 401:
+      case 400:
+      case 500:
+        const body = await res.json();
+        throw body;
+        break;
+      default:
+        break;
+    }
   }
 
   // 1. Explicit no-content statuses (204, 205) — the spec says no body.
