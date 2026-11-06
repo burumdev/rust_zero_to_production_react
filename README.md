@@ -6,7 +6,7 @@ The book version used as reference is 2021. Some of the libraries had subtle cha
 Some of the libraries used in the book are used with original downgraded versions for compatibility and interoperability. As a result of it, this codebase might not have the latest security advisory patches applied and shouldn't be used or derived from in production (despite the name).
 
 ## Differences with the original project
-* Added a UI in `frontend` directory built with React, Rsbuild, Tanstack Query for React and Tailwindcss.
+* Added a UI in `frontend` directory built with React, Rsbuild, Tanstack Query for React, React Router and Tailwindcss.
 * Added docker compose setup for easier ops and communication between app docker and database docker in local development environment. So it is easy to test the app in both development and production mode in local.
 * DigitalOcean deployment setup is omitted
 * SSL support is disabled
