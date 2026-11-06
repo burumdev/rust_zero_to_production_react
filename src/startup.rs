@@ -10,8 +10,8 @@ use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
     routes::{
-        health_check::health_check, newsletters::publish_newsletter, subscriptions::subscribe,
-        subscriptions_confirm::confirm,
+        health_check::health_check, login::login, newsletters::publish_newsletter,
+        subscriptions::subscribe, subscriptions_confirm::confirm,
     },
 };
 
@@ -106,10 +106,11 @@ pub fn run(
             .wrap(TracingLogger::default())
             .service(
                 web::scope("/api")
-                    .route("/health_check", web::get().to(health_check))
                     .route("/subscriptions", web::post().to(subscribe))
                     .route("/subscriptions/confirm", web::get().to(confirm))
-                    .route("/newsletters", web::post().to(publish_newsletter)),
+                    .route("/newsletters", web::post().to(publish_newsletter))
+                    .route("/login", web::post().to(login))
+                    .route("/health_check", web::get().to(health_check)),
             )
             .app_data(db.clone())
             .app_data(email_client.clone())
