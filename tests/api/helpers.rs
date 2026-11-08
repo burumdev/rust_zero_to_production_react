@@ -1,11 +1,16 @@
 use std::sync::LazyLock;
 
+use actix_web::cookie::{Cookie, SameSite};
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
+use chrono::Utc;
+use reqwest::header::COOKIE;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
     configuration::{DatabaseConfiguration, get_configuration},
     email_client::EmailClient,
+    middleware::csrf,
     startup::{Application, get_connection_pool},
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -15,13 +20,32 @@ pub struct TestApp {
     pub db: PgPool,
     pub email_client: EmailClient,
     pub test_user: TestUser,
+    pub hmac_secret: SecretString,
 }
 
 impl TestApp {
+    // Returns (CSRF Token, CSRF Cookie)
+    pub fn csrf(&self) -> (String, String) {
+        let ts = &Utc::now().timestamp().to_string();
+        let token = csrf::calculate_signature_hex(self.hmac_secret.expose_secret(), ts);
+
+        let token = format!("{}.{}", ts, token);
+        (
+            token.clone(),
+            Cookie::build("csrf_token", token)
+                .same_site(SameSite::Strict)
+                .finish()
+                .to_string(),
+        )
+    }
+
     pub async fn post_subscriptions(&self, json_str: &str) -> reqwest::Response {
+        let (csrf_token, csrf_cookie) = self.csrf();
         let response = reqwest::Client::new()
             .post(&format!("{}/api/subscriptions", &self.address))
             .header("Content-Type", "application/json")
+            .header("X-CSRF-Token", csrf_token)
+            .header(COOKIE, csrf_cookie)
             .body(json_str.to_owned())
             .send()
             .await
@@ -31,8 +55,11 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let (csrf_token, csrf_cookie) = self.csrf();
         let response = reqwest::Client::new()
             .post(format!("{}/api/newsletters", &self.address))
+            .header("X-CSRF-Token", csrf_token)
+            .header(COOKIE, csrf_cookie)
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
@@ -132,10 +159,11 @@ pub async fn spawn_app() -> TestApp {
     );
 
     let test_app = TestApp {
-        address: format!("http://127.0.0.1:{}", port),
+        address: format!("http://localhost:{}", port),
         db: get_connection_pool(&configuration.database),
         email_client,
         test_user: TestUser::generate(),
+        hmac_secret: configuration.application.hmac_secret,
     };
 
     test_app.test_user.store(&test_app.db).await;

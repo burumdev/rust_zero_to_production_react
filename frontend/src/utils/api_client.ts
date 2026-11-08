@@ -11,13 +11,25 @@ export class ApiError extends Error {
   }
 }
 
+let csrfToken: string | undefined = undefined;
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  if (!csrfToken) {
+    csrfToken =
+      document.cookie
+        .split('; ')
+        .find((item) => item.startsWith('csrf_token='))
+        ?.split('=')[1] || '';
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
       ...options.headers,
     },
     ...options,

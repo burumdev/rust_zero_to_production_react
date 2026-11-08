@@ -1,7 +1,7 @@
 application:
   host: 0.0.0.0
   base_url: "http://0.0.0.0"
-  frontend_dev_origin: "http://127.0.0.1:8000"
+  frontend_dev_origin: "http://localhost:8000"
   environment: "production"
 database:
   host: "db"

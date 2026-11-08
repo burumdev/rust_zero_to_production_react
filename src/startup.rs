@@ -1,8 +1,8 @@
-use std::net::TcpListener;
+use std::{net::TcpListener, str::FromStr};
 
 use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{App, HttpServer, dev::Server, web};
+use actix_web::{App, HttpServer, dev::Server, http::header::HeaderName, web};
 use secrecy::SecretString;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_actix_web::TracingLogger;
@@ -92,8 +92,8 @@ pub fn run(
 ) -> Result<Server, std::io::Error> {
     let db = web::Data::new(db);
     let email_client = web::Data::new(email_client);
-    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
-    let port = web::Data::new(ApplicationPort(port));
+    let app_base_url = web::Data::new(ApplicationBaseUrl(base_url.clone()));
+    let app_port = web::Data::new(ApplicationPort(port));
     let environment = web::Data::new(app_environment);
     let hmac_secret = web::Data::new(ApplicationHmacSecret(hmac_secret));
 
@@ -104,7 +104,9 @@ pub fn run(
             .allowed_headers(vec![
                 actix_web::http::header::CONTENT_TYPE,
                 actix_web::http::header::AUTHORIZATION,
+                HeaderName::from_str("X-CSRF-Token").unwrap(),
             ])
+            .supports_credentials()
             .max_age(3600);
 
         App::new()
@@ -121,8 +123,8 @@ pub fn run(
             )
             .app_data(db.clone())
             .app_data(email_client.clone())
-            .app_data(base_url.clone())
-            .app_data(port.clone())
+            .app_data(app_base_url.clone())
+            .app_data(app_port.clone())
             .app_data(environment.clone())
             .app_data(hmac_secret.clone())
             .service(

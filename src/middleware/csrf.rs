@@ -74,7 +74,6 @@ where
                     let token = format!("{}.{}", ts, signature);
 
                     let cookie = Cookie::build("csrf_token", token)
-                        .path("/")
                         .http_only(false)
                         .same_site(SameSite::Strict)
                         .finish();
@@ -90,6 +89,13 @@ where
                     .and_then(|val| val.to_str().ok());
 
                 let cookie_token = req.cookie("csrf_token").map(|c| c.value().to_string());
+
+                // if let Some(header_token) = header_token {
+                //     dbg!(header_token);
+                // }
+                // if let Some(ref cookie_token) = cookie_token {
+                //     dbg!(cookie_token);
+                // }
 
                 let is_valid = match (header_token, cookie_token) {
                     (Some(ht), Some(ct)) if ht == ct => verify_csrf_token(ht, &hmac_secret),
@@ -146,7 +152,7 @@ fn internal_error_response<B>(req: ServiceRequest) -> ServiceResponse<EitherBody
     .map_into_right_body()
 }
 
-fn calculate_signature_hex(hmac_secret: &str, ts: &str) -> String {
+pub fn calculate_signature_hex(hmac_secret: &str, ts: &str) -> String {
     let mut mac = HmacSha256::new_from_slice(hmac_secret.as_bytes()).unwrap();
     mac.update(ts.as_bytes());
 
