@@ -8,12 +8,14 @@ Some of the libraries used in the book are used with original downgraded version
 ## Differences with the original project
 * Added a UI in `frontend` directory built with React, Rsbuild, Tanstack Query for React, React Router and Tailwindcss.
 * Added docker compose setup for easier ops and communication between app docker and database docker in local development environment. So it is easy to test the app in both development and production mode in local.
-* DigitalOcean deployment setup is omitted
-* SSL support is disabled
 * Mailtrap API for email testing instead of Postmark. The free tier supports only text based emails.
 * Email testing is done based on direct response from Mailtrap server instead of a mock server.
 Successful mailtrap API send requests return a list of `message_id`s (one for single emails) and this `message_id` is used to further query the mailtrap API for the text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
+* Since frontend is SPA, mutation requests are JSON based instead of forms
+* CSRF protection is handled with a custom HMAC middleware
 * The `modname/mod.rs` directory structure is not used. The more preferred approach `modname.rs` in root and submodules in `modname` directory is used.
+* DigitalOcean deployment setup is omitted
+* SSL support is disabled
 
 # Running
 Before running the app, make a copy of `.env-example` file as `.env` and fill in the credentials there
