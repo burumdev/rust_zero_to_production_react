@@ -50,6 +50,7 @@ pub struct ApplicationConfiguration {
     pub base_url: String,
     pub frontend_dev_origin: String,
     pub environment: AppEnvironment,
+    pub hmac_secret: SecretString,
 }
 
 #[derive(serde::Deserialize, Clone)]

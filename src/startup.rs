@@ -3,12 +3,14 @@ use std::net::TcpListener;
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::{App, HttpServer, dev::Server, web};
+use secrecy::SecretString;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
+    middleware::csrf::Csrf,
     routes::{
         health_check::health_check, login::login, newsletters::publish_newsletter,
         subscriptions::subscribe, subscriptions_confirm::confirm,
@@ -55,6 +57,7 @@ impl Application {
             port,
             configuration.application.frontend_dev_origin,
             configuration.application.environment,
+            configuration.application.hmac_secret,
         )?;
 
         Ok(Self { port, server })
@@ -75,6 +78,7 @@ pub fn get_connection_pool(configuration: &DatabaseConfiguration) -> PgPool {
 
 pub struct ApplicationBaseUrl(pub String);
 pub struct ApplicationPort(pub u16);
+pub struct ApplicationHmacSecret(pub SecretString);
 
 pub fn run(
     listener: TcpListener,
@@ -84,12 +88,14 @@ pub fn run(
     port: u16,
     frontend_dev_origin: String,
     app_environment: AppEnvironment,
+    hmac_secret: SecretString,
 ) -> Result<Server, std::io::Error> {
     let db = web::Data::new(db);
     let email_client = web::Data::new(email_client);
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
     let port = web::Data::new(ApplicationPort(port));
     let environment = web::Data::new(app_environment);
+    let hmac_secret = web::Data::new(ApplicationHmacSecret(hmac_secret));
 
     let server = HttpServer::new(move || {
         let cors = Cors::default()
@@ -102,6 +108,7 @@ pub fn run(
             .max_age(3600);
 
         App::new()
+            .wrap(Csrf)
             .wrap(cors)
             .wrap(TracingLogger::default())
             .service(
@@ -117,10 +124,13 @@ pub fn run(
             .app_data(base_url.clone())
             .app_data(port.clone())
             .app_data(environment.clone())
+            .app_data(hmac_secret.clone())
             .service(
                 Files::new("/", "./frontend/dist")
                     .index_file("index.html")
                     .prefer_utf8(true)
+                    // This allows frontend routing like react-router to work
+                    // properly and not request non-existing files on the server.
                     .default_handler(|req: actix_web::dev::ServiceRequest| {
                         let (http_req, _payload) = req.into_parts();
                         async move {

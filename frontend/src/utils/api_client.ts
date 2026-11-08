@@ -25,7 +25,7 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData || 'A technical error occured.');
+    throw new Error(errorData.message || 'A technical error occured.');
   }
 
   // 1. Explicit no-content statuses (204, 205) — the spec says no body.
