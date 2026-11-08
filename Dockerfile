@@ -12,7 +12,7 @@ RUN pnpm install
 
 # Copy the rest of the frontend code and build
 COPY frontend/ .
-ENV PUBLIC_API_URL http://127.0.0.1:8000/api
+ENV PUBLIC_API_URL http://localhost:8000/api
 RUN pnpm build
 
 # ==========================================
