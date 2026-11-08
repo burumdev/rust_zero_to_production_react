@@ -1,4 +1,8 @@
-use actix_web::{HttpResponse, Responder, ResponseError, http::StatusCode, web};
+use actix_web::{
+    HttpResponse, ResponseError,
+    http::StatusCode,
+    web::{self, Json},
+};
 use anyhow::Context;
 use chrono::Utc;
 use rand::{RngExt, distr::Alphanumeric};
@@ -84,7 +88,7 @@ pub async fn subscribe(
     base_url: web::Data<ApplicationBaseUrl>,
     port: web::Data<ApplicationPort>,
     environment: web::Data<AppEnvironment>,
-) -> Result<impl Responder, SubscribeError> {
+) -> Result<Json<SuccessResponse>, SubscribeError> {
     let new_subscriber = form.0.try_into()?;
 
     let mut transaction = db
@@ -126,7 +130,7 @@ pub async fn subscribe(
         AppEnvironment::Production => None,
     };
 
-    Ok(HttpResponse::Ok().json(SuccessResponse {
+    Ok(web::Json(SuccessResponse {
         success: true,
         message: "Thank you for joining our newsletter!".to_owned(),
         data,
