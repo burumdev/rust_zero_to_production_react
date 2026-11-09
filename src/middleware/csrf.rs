@@ -5,7 +5,7 @@ use actix_web::body::{BoxBody, EitherBody};
 use actix_web::cookie::{Cookie, SameSite};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
 use actix_web::http::Method;
-use actix_web::{Error, HttpResponse, web};
+use actix_web::{Error, HttpResponse, HttpResponseBuilder, web};
 use chrono::Utc;
 use futures_util::future::LocalBoxFuture;
 use hmac::{Hmac, KeyInit, Mac};
@@ -58,7 +58,10 @@ where
 
         return Box::pin(async move {
             let Some(hmac_secret) = req.app_data::<web::Data<ApplicationHmacSecret>>() else {
-                return Ok(internal_error_response(req));
+                return Ok(error_response(
+                    req,
+                    &mut HttpResponse::InternalServerError(),
+                ));
             };
 
             let hmac_secret = hmac_secret.get_ref().0.expose_secret().to_owned();
@@ -103,9 +106,7 @@ where
                 };
 
                 if !is_valid {
-                    return Ok(req
-                        .into_response(HttpResponse::Forbidden().body("").map_into_boxed_body())
-                        .map_into_right_body());
+                    return Ok(error_response(req, &mut HttpResponse::Forbidden()));
                 }
 
                 let res = s.call(req).await?;
@@ -143,13 +144,12 @@ fn verify_csrf_token(token: &str, hmac_secret: &str) -> bool {
     .into()
 }
 
-fn internal_error_response<B>(req: ServiceRequest) -> ServiceResponse<EitherBody<B>> {
-    req.into_response(
-        HttpResponse::InternalServerError()
-            .body("")
-            .map_into_boxed_body(),
-    )
-    .map_into_right_body()
+fn error_response<B>(
+    req: ServiceRequest,
+    response_builder: &mut HttpResponseBuilder,
+) -> ServiceResponse<EitherBody<B>> {
+    req.into_response(response_builder.body("").map_into_boxed_body())
+        .map_into_right_body()
 }
 
 pub fn calculate_signature_hex(hmac_secret: &str, ts: &str) -> String {
