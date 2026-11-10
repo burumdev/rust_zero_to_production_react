@@ -39,6 +39,21 @@ impl TestApp {
         )
     }
 
+    pub async fn post_login(&self, json_str: &str) -> reqwest::Response {
+        let (csrf_token, csrf_cookie) = self.csrf();
+        let response = reqwest::Client::new()
+            .post(&format!("{}/api/login", &self.address))
+            .header("Content-Type", "application/json")
+            .header("X-CSRF-Token", csrf_token)
+            .header(COOKIE, csrf_cookie)
+            .body(json_str.to_owned())
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        response
+    }
+
     pub async fn post_subscriptions(&self, json_str: &str) -> reqwest::Response {
         let (csrf_token, csrf_cookie) = self.csrf();
         let response = reqwest::Client::new()
