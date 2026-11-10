@@ -2,8 +2,9 @@ use std::{net::TcpListener, str::FromStr};
 
 use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{App, HttpServer, dev::Server, http::header::HeaderName, web};
-use secrecy::SecretString;
+use actix_session::{SessionMiddleware, storage::RedisSessionStore};
+use actix_web::{App, HttpServer, cookie::Key, dev::Server, http::header::HeaderName, web};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_actix_web::TracingLogger;
 
@@ -23,7 +24,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(configuration: Configuration) -> Result<Self, std::io::Error> {
+    pub async fn build(configuration: Configuration) -> Result<Self, anyhow::Error> {
         let db = get_connection_pool(&configuration.database);
 
         let sender_email = configuration
@@ -58,7 +59,9 @@ impl Application {
             configuration.application.frontend_dev_origin,
             configuration.application.environment,
             configuration.application.hmac_secret,
-        )?;
+            configuration.application.redis_uri,
+        )
+        .await?;
 
         Ok(Self { port, server })
     }
@@ -80,7 +83,7 @@ pub struct ApplicationBaseUrl(pub String);
 pub struct ApplicationPort(pub u16);
 pub struct ApplicationHmacSecret(pub SecretString);
 
-pub fn run(
+async fn run(
     listener: TcpListener,
     db: PgPool,
     email_client: EmailClient,
@@ -89,13 +92,16 @@ pub fn run(
     frontend_dev_origin: String,
     app_environment: AppEnvironment,
     hmac_secret: SecretString,
-) -> Result<Server, std::io::Error> {
+    redis_uri: SecretString,
+) -> Result<Server, anyhow::Error> {
     let db = web::Data::new(db);
     let email_client = web::Data::new(email_client);
     let app_base_url = web::Data::new(ApplicationBaseUrl(base_url.clone()));
     let app_port = web::Data::new(ApplicationPort(port));
     let environment = web::Data::new(app_environment);
+    let session_key = Key::from(hmac_secret.expose_secret().as_bytes());
     let hmac_secret = web::Data::new(ApplicationHmacSecret(hmac_secret));
+    let redis_store = RedisSessionStore::new(redis_uri.expose_secret()).await?;
 
     let server = HttpServer::new(move || {
         let cors = Cors::default()
@@ -111,6 +117,10 @@ pub fn run(
 
         App::new()
             .wrap(Csrf)
+            .wrap(SessionMiddleware::new(
+                redis_store.clone(),
+                session_key.clone(),
+            ))
             .wrap(cors)
             .wrap(TracingLogger::default())
             .service(

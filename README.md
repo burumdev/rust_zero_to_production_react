@@ -27,6 +27,7 @@ with your local credentials. Some of the items in the file are mailtrap specific
 ## Running on the local machine (development mode)
 * Run `./scripts/init_db.sh`. This will also migrate the database
 * Run `cargo run`
+* A visit to http://localhost:8000 (production frontend) is necessary to set the CSRF cookie
 * In `frontend` directory run `pnpm run dev` to launch frontend development server
 
 ## Running containerized in Docker (production mode)

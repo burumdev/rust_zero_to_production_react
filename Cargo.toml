@@ -42,6 +42,7 @@ hmac = "0.13.0"
 sha2 = "0.11.1"
 futures-util = "0.3.34"
 subtle = "2.6.1"
+actix-session = { version = "0.11.0", features = ["redis-session"] }
 
 [dependencies.reqwest]
 version = "0.13.5"

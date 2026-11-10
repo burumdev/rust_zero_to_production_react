@@ -93,13 +93,6 @@ where
 
                 let cookie_token = req.cookie("csrf_token").map(|c| c.value().to_string());
 
-                // if let Some(header_token) = header_token {
-                //     dbg!(header_token);
-                // }
-                // if let Some(ref cookie_token) = cookie_token {
-                //     dbg!(cookie_token);
-                // }
-
                 let is_valid = match (header_token, cookie_token) {
                     (Some(ht), Some(ct)) if ht == ct => verify_csrf_token(ht, &hmac_secret),
                     _ => false,
