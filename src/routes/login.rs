@@ -1,3 +1,4 @@
+use actix_session::Session;
 use actix_web::{
     HttpResponse, ResponseError,
     http::StatusCode,
@@ -25,13 +26,14 @@ pub struct LoginFormData {
 pub async fn login(
     form: web::Json<LoginFormData>,
     db: web::Data<PgPool>,
+    session: Session,
 ) -> Result<Json<SuccessResponse>, LoginError> {
     let credentials = Credentials {
         username: form.0.username,
         password: form.0.password,
     };
 
-    tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
+    tracing::Span::current().record("username", tracing::field::display(&credentials.username));
 
     let user_id = validate_credentials(credentials, &db)
         .await
@@ -40,7 +42,11 @@ pub async fn login(
             AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
         })?;
 
-    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+
+    session
+        .insert("user_id", user_id)
+        .map_err(|e| LoginError::UnexpectedError(anyhow::anyhow!(e)))?;
 
     Ok(Json(SuccessResponse {
         success: true,
@@ -71,7 +77,7 @@ impl ResponseError for LoginError {
         }
     }
     fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
-        let res_success = SuccessResponse {
+        let res_err = SuccessResponse {
             success: false,
             message: "A technical error occured.".to_owned(),
             data: None,
@@ -82,9 +88,9 @@ impl ResponseError for LoginError {
         match self {
             LoginError::AuthError(_) => response.json(SuccessResponse {
                 message: "Wrong username or password".to_owned(),
-                ..res_success
+                ..res_err
             }),
-            LoginError::UnexpectedError(_) => response.json(res_success),
+            LoginError::UnexpectedError(_) => response.json(res_err),
         }
     }
 }

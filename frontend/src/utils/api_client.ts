@@ -25,7 +25,7 @@ export async function apiFetch<T>(
         ?.split('=')[1] || '';
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_URL}/${path}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

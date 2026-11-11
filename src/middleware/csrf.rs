@@ -56,7 +56,7 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let s = self.service.clone();
 
-        return Box::pin(async move {
+        Box::pin(async move {
             let Some(hmac_secret) = req.app_data::<web::Data<ApplicationHmacSecret>>() else {
                 return Ok(error_response(
                     req,
@@ -72,15 +72,7 @@ where
                 // If the response doesn't have the csrf_token cookie
                 // We add it, so it will be sent with every mutation request.
                 if res.request().cookie("csrf_token").is_none() {
-                    let ts = Utc::now().timestamp().to_string();
-                    let signature = calculate_signature_hex(&hmac_secret, &ts);
-                    let token = format!("{}.{}", ts, signature);
-
-                    let cookie = Cookie::build("csrf_token", token)
-                        .http_only(false)
-                        .same_site(SameSite::Strict)
-                        .finish();
-
+                    let cookie = get_csrf_cookie(&hmac_secret);
                     res.response_mut().add_cookie(&cookie)?;
                 }
 
@@ -106,7 +98,7 @@ where
 
                 Ok(res.map_body(|_head, body| EitherBody::left(body)))
             }
-        });
+        })
     }
 }
 
@@ -150,4 +142,15 @@ pub fn calculate_signature_hex(hmac_secret: &str, ts: &str) -> String {
     mac.update(ts.as_bytes());
 
     hex::encode(mac.finalize().into_bytes())
+}
+
+pub fn get_csrf_cookie(hmac_secret: &str) -> Cookie<'_> {
+    let ts = Utc::now().timestamp().to_string();
+    let signature = calculate_signature_hex(hmac_secret, &ts);
+    let token = format!("{}.{}", ts, signature);
+
+    Cookie::build("csrf_token", token)
+        .http_only(false)
+        .same_site(SameSite::Strict)
+        .finish()
 }

@@ -3,6 +3,7 @@ import TextInput from '@components/TextInput';
 import { useAdminLogin } from '@admin/hooks/use_admin';
 import type { AdminLoginRequest } from '@admin/admin_types';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 type FormField = 'username' | 'password';
 type FormRecord = Record<FormField, string>;
@@ -16,6 +17,8 @@ const Login = () => {
     isError,
     isSuccess,
   } = useAdminLogin();
+
+  const navigate = useNavigate();
 
   const initialFormData: Record<FormField, string> = {
     username: '',
@@ -85,15 +88,21 @@ const Login = () => {
     });
   };
 
-  useEffect(() => {
-    setFormSubmitButtonDisabled(!isFormValid());
-  }, [formDataErrors]);
-
   const handleSubmit = () => {
     if (isFormValid()) {
       sendForm(formData as AdminLoginRequest);
     }
   };
+
+  useEffect(() => {
+    setFormSubmitButtonDisabled(!isFormValid());
+  }, [formDataErrors]);
+
+  useEffect(() => {
+    if (isSuccess) {
+      navigate('/adminpanel');
+    }
+  }, [isSuccess]);
 
   return (
     <div className="w-[600px] text-darkgray">

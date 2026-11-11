@@ -5,7 +5,7 @@ import type { MutationResponse } from 'src/common_types';
 export const postUserRegisterNewsletter = (
   data: UserNewsletterRegisterRequest,
 ) => {
-  return apiFetch<MutationResponse>('/subscriptions', {
+  return apiFetch<MutationResponse>('subscriptions', {
     method: 'POST',
     body: JSON.stringify(data),
   });

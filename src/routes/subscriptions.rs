@@ -221,10 +221,7 @@ pub async fn insert_subscriber_confirmation(
         subscriber_id,
     );
 
-    transaction
-        .execute(query)
-        .await
-        .map_err(|e| StoreTokenError(e))?;
+    transaction.execute(query).await.map_err(StoreTokenError)?;
 
     Ok(())
 }
