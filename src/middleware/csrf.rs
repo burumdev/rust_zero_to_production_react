@@ -67,7 +67,7 @@ where
             let hmac_secret = hmac_secret.get_ref().0.expose_secret().to_owned();
             let method = req.method();
 
-            if method == Method::GET || method == Method::HEAD || method == Method::OPTIONS {
+            if method == Method::GET {
                 let mut res = s.call(req).await?;
                 // If the response doesn't have the csrf_token cookie
                 // We add it, so it will be sent with every mutation request.

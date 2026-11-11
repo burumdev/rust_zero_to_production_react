@@ -3,7 +3,9 @@ use std::{net::TcpListener, str::FromStr};
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_session::{SessionMiddleware, storage::RedisSessionStore};
-use actix_web::{App, HttpServer, cookie::Key, dev::Server, http::header::HeaderName, web};
+use actix_web::{
+    App, HttpServer, cookie::Key, dev::Server, http::header::HeaderName, middleware::from_fn, web,
+};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing_actix_web::TracingLogger;
@@ -11,7 +13,7 @@ use tracing_actix_web::TracingLogger;
 use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
-    middleware::csrf::Csrf,
+    middleware::csrf_middleware::csrf_middleware,
     routes::{
         health_check::health_check, login::login, newsletters::publish_newsletter,
         subscriptions::subscribe, subscriptions_confirm::confirm,
@@ -116,7 +118,7 @@ async fn run(
             .max_age(3600);
 
         App::new()
-            .wrap(Csrf)
+            .wrap(from_fn(csrf_middleware))
             .wrap(SessionMiddleware::new(
                 redis_store.clone(),
                 session_key.clone(),
