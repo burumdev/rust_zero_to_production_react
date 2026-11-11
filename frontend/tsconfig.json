@@ -32,12 +32,13 @@
       ],
       "@utils/*": [
         "src/utils/*"
+      ],
+      "@admin/*": [
+        "src/features/admin/*"
       ]
     }
   },
   "include": [
-    "src",
-    "common_types.ts",
-    "Login.tsx"
+    "src"
   ]
 }

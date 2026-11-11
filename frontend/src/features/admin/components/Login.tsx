@@ -1,7 +1,7 @@
 import Button from '@components/Button';
 import TextInput from '@components/TextInput';
-import { useAdminLogin } from '@user/hooks/use_user';
-import type { AdminLoginRequest } from '@user/user_types';
+import { useAdminLogin } from '@admin/hooks/use_admin';
+import type { AdminLoginRequest } from '@admin/admin_types';
 import { useEffect, useState } from 'react';
 
 type FormField = 'username' | 'password';
@@ -90,11 +90,9 @@ const Login = () => {
   }, [formDataErrors]);
 
   const handleSubmit = () => {
-    sendForm(formData as AdminLoginRequest, {
-      onSettled: () => {
-        resetFormDataError('all');
-      },
-    });
+    if (isFormValid()) {
+      sendForm(formData as AdminLoginRequest);
+    }
   };
 
   return (
