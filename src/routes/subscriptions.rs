@@ -137,10 +137,7 @@ pub async fn subscribe(
     }))
 }
 
-#[tracing::instrument(
-    name = "Send a confirmation email to a new subscriber",
-    skip(email_client, new_subscriber)
-)]
+#[tracing::instrument(name = "Send a confirmation email to a new subscriber", skip_all)]
 pub async fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,
