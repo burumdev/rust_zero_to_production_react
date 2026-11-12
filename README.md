@@ -28,7 +28,6 @@ There's also another `.env-example` for the frontend in `frontend` directory tha
 ## Running on the local machine (development mode)
 * Run `./scripts/init_db.sh`. This will also migrate the database
 * Run `cargo run`
-* A visit to http://localhost:8000 (production frontend) is necessary to set the CSRF cookie and session cookie upon succesful login.
 * In `frontend` directory run `pnpm run dev` to launch frontend development server
 
 ## Running containerized in Docker (production mode)

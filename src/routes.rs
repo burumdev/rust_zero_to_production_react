@@ -1,3 +1,4 @@
+pub mod csrf_cookie;
 pub mod health_check;
 pub mod login;
 pub mod newsletters;

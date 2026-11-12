@@ -30,9 +30,13 @@ pub async fn csrf_middleware(
 
     if method == Method::GET {
         let mut res = next.call(req).await?;
-        // If the response doesn't have the csrf_token cookie
-        // We add it, so it will be sent with every mutation request.
-        if res.request().cookie("csrf_token").is_none() {
+        // If the request doesn't have the csrf_token cookie
+        // We add it, so it will be sent with every mutation request by the frontend
+        // Ignore the frontend dev server's cross origin request to csrf_cookie handler
+        // to avoid setting the cookie twice.
+        if res.request().cookie("csrf_token").is_none()
+            && !res.request().uri().path().contains("csrf_cookie")
+        {
             let cookie = get_csrf_cookie(&hmac_secret);
             res.response_mut().add_cookie(&cookie)?;
         }

@@ -15,8 +15,8 @@ use crate::{
     email_client::EmailClient,
     middleware::csrf_middleware::csrf_middleware,
     routes::{
-        health_check::health_check, login::login, newsletters::publish_newsletter,
-        subscriptions::subscribe, subscriptions_confirm::confirm,
+        csrf_cookie::csrf_cookie, health_check::health_check, login::login,
+        newsletters::publish_newsletter, subscriptions::subscribe, subscriptions_confirm::confirm,
     },
 };
 
@@ -131,7 +131,8 @@ async fn run(
                     .route("/subscriptions/confirm", web::get().to(confirm))
                     .route("/newsletters", web::post().to(publish_newsletter))
                     .route("/login", web::post().to(login))
-                    .route("/health_check", web::get().to(health_check)),
+                    .route("/health_check", web::get().to(health_check))
+                    .route("/csrf_cookie", web::get().to(csrf_cookie)),
             )
             .app_data(db.clone())
             .app_data(email_client.clone())
