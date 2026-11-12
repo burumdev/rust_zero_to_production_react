@@ -37,7 +37,9 @@ ENV SQLX_OFFLINE true
 ENV DOCKER_BUILD_SKIP_FRONTEND true
 RUN cargo build --release --bin zero2prod
 
-# Runtime
+# ==========================================
+# 3. Runtime
+# ==========================================
 FROM debian:trixie-slim AS runtime
 WORKDIR /app
 RUN apt update -y \

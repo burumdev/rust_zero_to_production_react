@@ -1,6 +1,6 @@
 # Zero to Production in Rust + React
 
-This is an implementation of an Actix-web newsletter app based on Luca Palmieri's book of the same name. A single page application React frontend is added as a user interface. It's a hands-on experience in professional Rust web stack and modern typescript frontend tooling.
+This is an implementation of the Actix-web newsletter app based on Luca Palmieri's book of the same name. A single page application React frontend is added as a user interface. It's a hands-on experience in professional Rust web stack and modern typescript frontend tooling.
 
 The book version used as reference is 2021. Some of the libraries had subtle changes in their APIs, feature flags and types in current versions. For example instead of `once_cell` crate for the Lazy initialization in integration tests, I used `LazyLock` from `std::sync`, as it is stabilized now.
 Some of the libraries used in the book are used with original downgraded versions for compatibility and interoperability. As a result of it, this codebase might not have the latest security advisory patches applied and shouldn't be used or derived from in production (despite the name).
@@ -18,8 +18,9 @@ Successful mailtrap API send requests return a list of `message_id`s (one for si
 * SSL support is disabled
 
 # Running
-Before running the app, make a copy of `.env-example` file as `.env` and fill in the credentials there
+Before running the app, make a copy of `.env-example` file as `.env` and fill in the credentials
 with your local credentials. Some of the items in the file are mailtrap specific and based on their API.
+There's also another `.env-example` for the frontend in `frontend` directory that will need the same.
 * You'll need `psql` on your system and `sqlx-cli` on your Rust installation.
 * You'll need `Node.js` and `pnpm` installed for the frontend build.
 * run `pnpm install` in `frontend` directory to pull frontend dependencies.
@@ -27,7 +28,7 @@ with your local credentials. Some of the items in the file are mailtrap specific
 ## Running on the local machine (development mode)
 * Run `./scripts/init_db.sh`. This will also migrate the database
 * Run `cargo run`
-* A visit to http://localhost:8000 (production frontend) is necessary to set the CSRF cookie
+* A visit to http://localhost:8000 (production frontend) is necessary to set the CSRF cookie and session cookie upon succesful login.
 * In `frontend` directory run `pnpm run dev` to launch frontend development server
 
 ## Running containerized in Docker (production mode)
