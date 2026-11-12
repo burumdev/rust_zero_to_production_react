@@ -23,10 +23,12 @@ with your local credentials. Some of the items in the file are mailtrap specific
 There's also another `.env-example` for the frontend in `frontend` directory that will need the same.
 * You'll need `psql` on your system and `sqlx-cli` on your Rust installation.
 * You'll need `Node.js` and `pnpm` installed for the frontend build.
-* run `pnpm install` in `frontend` directory to pull frontend dependencies.
+* Run `pnpm install` in `frontend` directory to pull frontend dependencies.
+* The build script `build.rs` will automatically build the frontend with a `cargo run`, putting release artifacts in `frontend/dist`.
 
 ## Running on the local machine (development mode)
-* Run `./scripts/init_db.sh`. This will also migrate the database
+* Run `./scripts/init_db.sh`. Starts the db docker container. This will also migrate the database
+* Run `./scripts/init_redis.sh`. This will start a Redis container to hold session data
 * Run `cargo run`
 * In `frontend` directory run `pnpm run dev` to launch frontend development server
 
