@@ -11,9 +11,10 @@ fi
 
 # Launch Redis container
 docker run \
-  -p "6380:6379" \
+  -p "6380:6380" \
   -d \
-  --name "redis_$(date '+%s')" \
-  redis:7
+  --name "zero2prod_docker_redis_$(date '+%s')" \
+  redis:7 \
+  redis-server --appendonly yes --port 6380
 
 >&2 echo "Redis is ready to Golang!"

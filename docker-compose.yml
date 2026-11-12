@@ -14,6 +14,13 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7
+    container_name: zero2prod_docker_redis
+    command: redis-server --appendonly yes --port 6380
+    ports:
+      - "6380:6380"
+
   app:
       build: .
       container_name: zero2prod_docker_app
@@ -26,6 +33,7 @@ services:
         - APP_DATABASE__USERNAME=${APP_DATABASE__USERNAME}
         - APP_DATABASE__PASSWORD=${APP_DATABASE__PASSWORD}
         - APP_DATABASE__HOST=db
+        - APP_APPLICATION__REDIS_URI=redis://zero2prod_docker_redis:6380
 
 networks:
   default:
