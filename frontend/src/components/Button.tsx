@@ -5,6 +5,7 @@ interface ButtonProps {
   text?: string;
   isDisabled?: boolean;
   isLoading?: boolean;
+  children?: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -14,6 +15,7 @@ const Button: React.FC<ButtonProps> = ({
   dropShadowColor = 'yellow',
   isDisabled = false,
   isLoading = false,
+  children = null,
 }) => {
   return (
     <div
@@ -27,7 +29,10 @@ const Button: React.FC<ButtonProps> = ({
         onClick={() => onClick()}
         disabled={isDisabled}
       >
-        <span className={isLoading ? 'blinking' : undefined}>{text}</span>
+        {text && (
+          <span className={isLoading ? 'blinking' : undefined}>{text}</span>
+        )}
+        {children}
       </button>
     </div>
   );
