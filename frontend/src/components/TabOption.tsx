@@ -5,7 +5,6 @@ export type TabOptionSettings = {
 };
 
 export interface TabOptionProps extends TabOptionSettings {
-  key: string;
   index: number;
   onClick: (index: number) => void;
   isActive: boolean;
@@ -15,7 +14,6 @@ const TabOption: React.FC<TabOptionProps> = ({
   text,
   icon_url,
   icon_alt,
-  key,
   index,
   onClick,
   isActive,
@@ -23,7 +21,6 @@ const TabOption: React.FC<TabOptionProps> = ({
   return (
     <div
       className={`tab-option cursor-pointer${isActive ? ' text-highlight' : ''}`}
-      key={key}
       onClick={() => onClick(index)}
     >
       <div

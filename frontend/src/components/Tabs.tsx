@@ -1,5 +1,4 @@
 import { v6 as uuidv6 } from 'uuid';
-
 import type { TabOptionSettings } from './TabOption';
 import TabOption from './TabOption';
 

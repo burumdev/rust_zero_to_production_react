@@ -1,17 +1,11 @@
 {
   "compilerOptions": {
-    "lib": [
-      "DOM",
-      "ES2020"
-    ],
+    "lib": ["DOM", "ES2020"],
     "jsx": "react-jsx",
     "target": "ES2020",
     "noEmit": true,
     "skipLibCheck": true,
-    "types": [
-      "@rsbuild/core/types",
-      "node"
-    ],
+    "types": ["@rsbuild/core/types", "node"],
     "useDefineForClassFields": true,
     /* modules */
     "moduleDetection": "force",
@@ -24,21 +18,11 @@
     "noUnusedParameters": true,
     "baseUrl": ".",
     "paths": {
-      "@components/*": [
-        "src/components/*"
-      ],
-      "@user/*": [
-        "src/features/user/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ],
-      "@admin/*": [
-        "src/features/admin/*"
-      ]
+      "@components/*": ["src/components/*"],
+      "@user/*": ["src/features/user/*"],
+      "@utils/*": ["src/utils/*"],
+      "@admin/*": ["src/features/admin/*"]
     }
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

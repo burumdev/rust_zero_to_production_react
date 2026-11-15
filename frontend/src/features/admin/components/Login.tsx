@@ -1,6 +1,6 @@
 import Button from '@components/Button';
 import TextInput from '@components/TextInput';
-import { useAdminLogin } from '@admin/hooks/use_admin';
+import { useAdminLogin, useLoginState } from '@admin/hooks/use_admin';
 import type { AdminLoginRequest } from '@admin/admin_types';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -11,13 +11,13 @@ type FormRecord = Record<FormField, string>;
 const Login = () => {
   const {
     mutate: sendForm,
-    data: successData,
     error: errorData,
     isPending,
     isError,
     isSuccess,
   } = useAdminLogin();
 
+  const isLoggedIn = useLoginState();
   const navigate = useNavigate();
 
   const initialFormData: Record<FormField, string> = {
@@ -100,52 +100,54 @@ const Login = () => {
 
   useEffect(() => {
     if (isSuccess) {
+      sessionStorage.setItem('login', 'yes');
       navigate('/adminpanel');
     }
   }, [isSuccess]);
 
   return (
-    <div className="w-[600px] text-darkgray">
-      <h1 className="text-center text-lg text-white">Login</h1>
-      <div className="mt-8 h-forminput">
-        <TextInput
-          placeholder="Username*"
-          isFocused
-          onChange={(e: any) =>
-            handleFormDataChange('username', e.target.value)
-          }
-          value={formData.username}
-          errorStr={formDataErrors['username']}
-        />
+    !isLoggedIn && (
+      <div className="w-[600px] text-darkgray">
+        <h1 className="text-center text-lg text-white">Login</h1>
+        <div className="mt-8 h-forminput">
+          <TextInput
+            placeholder="Username*"
+            isFocused
+            onChange={(e: any) =>
+              handleFormDataChange('username', e.target.value)
+            }
+            value={formData.username}
+            errorStr={formDataErrors['username']}
+          />
+        </div>
+        <div className="mt-8 h-forminput">
+          <TextInput
+            placeholder="Password*"
+            onChange={(e: any) =>
+              handleFormDataChange('password', e.target.value)
+            }
+            value={formData.password}
+            errorStr={formDataErrors['password']}
+            type="password"
+          />
+        </div>
+        <div
+          className={`h-forminput flex items-end mt-2 text-xs ${isSuccess ? 'text-success' : 'text-error'}`}
+        >
+          {isError && errorData.message}
+        </div>
+        <div className="mt-4 h-forminput flex justify-end">
+          <Button
+            onClick={handleSubmit}
+            text="LOGIN"
+            backgroundClass="bg-highlight"
+            dropShadowColor="highlight-darker"
+            isDisabled={isFormSubmitButtonDisabled || isPending}
+            isLoading={isPending}
+          />
+        </div>
       </div>
-      <div className="mt-8 h-forminput">
-        <TextInput
-          placeholder="Password*"
-          onChange={(e: any) =>
-            handleFormDataChange('password', e.target.value)
-          }
-          value={formData.password}
-          errorStr={formDataErrors['password']}
-          type="password"
-        />
-      </div>
-      <div
-        className={`h-forminput flex items-end mt-2 text-xs ${isSuccess ? 'text-success' : 'text-error'}`}
-      >
-        {isSuccess && successData.message}
-        {isError && errorData.message}
-      </div>
-      <div className="mt-4 h-forminput flex justify-end">
-        <Button
-          onClick={handleSubmit}
-          text="LOGIN"
-          backgroundClass="bg-highlight"
-          dropShadowColor="highlight-darker"
-          isDisabled={isFormSubmitButtonDisabled || isPending}
-          isLoading={isPending}
-        />
-      </div>
-    </div>
+    )
   );
 };
 
