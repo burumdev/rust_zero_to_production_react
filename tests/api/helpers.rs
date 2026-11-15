@@ -1,16 +1,12 @@
 use std::sync::LazyLock;
 
-use actix_web::cookie::{Cookie, SameSite};
-use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
-use chrono::Utc;
-use reqwest::header::COOKIE;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 use zero2prod::{
+    authentication::compute_password_hash,
     configuration::{DatabaseConfiguration, get_configuration},
     email_client::EmailClient,
-    middleware::csrf,
     startup::{Application, get_connection_pool},
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -19,33 +15,45 @@ pub struct TestApp {
     pub address: String,
     pub db: PgPool,
     pub email_client: EmailClient,
+    pub api_client: reqwest::Client,
     pub test_user: TestUser,
-    pub hmac_secret: SecretString,
+    pub csrf_token: String,
 }
 
 impl TestApp {
-    // Returns (CSRF Token, CSRF Cookie)
-    pub fn csrf(&self) -> (String, String) {
-        let ts = &Utc::now().timestamp().to_string();
-        let token = csrf::calculate_signature_hex(self.hmac_secret.expose_secret(), ts);
+    pub async fn post_change_password(&self, json_str: &str) -> reqwest::Response {
+        let response = self
+            .api_client
+            .post(&format!("{}/api/admin/password", &self.address))
+            .header("Content-Type", "application/json")
+            .header("X-CSRF-Token", self.csrf_token.as_str())
+            .body(json_str.to_owned())
+            .send()
+            .await
+            .expect("Failed to execute request.");
 
-        let token = format!("{}.{}", ts, token);
-        (
-            token.clone(),
-            Cookie::build("csrf_token", token)
-                .same_site(SameSite::Strict)
-                .finish()
-                .to_string(),
-        )
+        response
+    }
+
+    pub async fn post_logout(&self) -> reqwest::Response {
+        let response = self
+            .api_client
+            .post(&format!("{}/api/admin/logout", &self.address))
+            .header("Content-Type", "application/json")
+            .header("X-CSRF-Token", self.csrf_token.as_str())
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        response
     }
 
     pub async fn post_login(&self, json_str: &str) -> reqwest::Response {
-        let (csrf_token, csrf_cookie) = self.csrf();
-        let response = reqwest::Client::new()
+        let response = self
+            .api_client
             .post(&format!("{}/api/login", &self.address))
             .header("Content-Type", "application/json")
-            .header("X-CSRF-Token", csrf_token)
-            .header(COOKIE, csrf_cookie)
+            .header("X-CSRF-Token", self.csrf_token.as_str())
             .body(json_str.to_owned())
             .send()
             .await
@@ -55,12 +63,11 @@ impl TestApp {
     }
 
     pub async fn post_subscriptions(&self, json_str: &str) -> reqwest::Response {
-        let (csrf_token, csrf_cookie) = self.csrf();
-        let response = reqwest::Client::new()
+        let response = self
+            .api_client
             .post(&format!("{}/api/subscriptions", &self.address))
             .header("Content-Type", "application/json")
-            .header("X-CSRF-Token", csrf_token)
-            .header(COOKIE, csrf_cookie)
+            .header("X-CSRF-Token", self.csrf_token.as_str())
             .body(json_str.to_owned())
             .send()
             .await
@@ -70,11 +77,10 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        let (csrf_token, csrf_cookie) = self.csrf();
-        let response = reqwest::Client::new()
+        let response = self
+            .api_client
             .post(format!("{}/api/newsletters", &self.address))
-            .header("X-CSRF-Token", csrf_token)
-            .header(COOKIE, csrf_cookie)
+            .header("X-CSRF-Token", self.csrf_token.as_str())
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
@@ -85,6 +91,7 @@ impl TestApp {
     }
 }
 
+#[derive(serde::Serialize)]
 pub struct TestUser {
     pub user_id: Uuid,
     pub username: String,
@@ -101,21 +108,15 @@ impl TestUser {
     }
 
     async fn store(&self, db: &PgPool) {
-        let password_hash = Argon2::new(
-            Algorithm::Argon2id,
-            Version::V0x13,
-            Params::new(15000, 2, 1, None).unwrap(),
-        )
-        .hash_password(self.password.as_bytes())
-        .unwrap()
-        .to_string();
+        let password_hash =
+            compute_password_hash(SecretString::from(self.password.as_str())).unwrap();
 
         sqlx::query!(
             "INSERT INTO users (user_id, username, password_hash)
             VALUES ($1, $2, $3)",
             self.user_id,
             self.username,
-            password_hash,
+            password_hash.expose_secret(),
         )
         .execute(db)
         .await
@@ -173,12 +174,32 @@ pub async fn spawn_app() -> TestApp {
         configuration.email_client.sandbox_base_url.clone(),
     );
 
+    let api_client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .cookie_store(true)
+        .build()
+        .unwrap();
+
+    let address = format!("http://localhost:{}", port);
+    // Hit the server once on homepage to store csrf cookie
+    let response = api_client
+        .get(format!("{}", address))
+        .send()
+        .await
+        .expect("Could not send initial request to server for csrf_cookie");
+
+    let csrf_token = response
+        .cookies()
+        .find(|cook| cook.name().contains("csrf_token"));
+    let csrf_token = csrf_token.unwrap().value().to_owned();
+
     let test_app = TestApp {
-        address: format!("http://localhost:{}", port),
+        address,
         db: get_connection_pool(&configuration.database),
         email_client,
         test_user: TestUser::generate(),
-        hmac_secret: configuration.application.hmac_secret,
+        api_client,
+        csrf_token,
     };
 
     test_app.test_user.store(&test_app.db).await;

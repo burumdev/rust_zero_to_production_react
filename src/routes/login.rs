@@ -1,4 +1,3 @@
-use actix_session::Session;
 use actix_web::{
     HttpResponse, ResponseError,
     http::StatusCode,
@@ -9,7 +8,9 @@ use sqlx::PgPool;
 
 use crate::{
     authentication::{AuthError, Credentials, validate_credentials},
+    constants::TXT_TECHNICAL_ERROR,
     domain::common::SuccessResponse,
+    session_state::TypedSession,
     utils::error_chain_fmt,
 };
 
@@ -26,7 +27,7 @@ pub struct LoginFormData {
 pub async fn login(
     form: web::Json<LoginFormData>,
     db: web::Data<PgPool>,
-    session: Session,
+    session: TypedSession,
 ) -> Result<Json<SuccessResponse>, LoginError> {
     let credentials = Credentials {
         username: form.0.username,
@@ -44,9 +45,10 @@ pub async fn login(
 
     tracing::Span::current().record("user_id", tracing::field::display(&user_id));
 
+    session.renew();
     session
-        .insert("user_id", user_id)
-        .map_err(|e| LoginError::UnexpectedError(anyhow::anyhow!(e)))?;
+        .insert_user_id(user_id)
+        .map_err(|e| LoginError::UnexpectedError(e.into()))?;
 
     Ok(Json(SuccessResponse {
         success: true,
@@ -79,7 +81,7 @@ impl ResponseError for LoginError {
     fn error_response(&self) -> actix_web::HttpResponse<actix_web::body::BoxBody> {
         let res_err = SuccessResponse {
             success: false,
-            message: "A technical error occured.".to_owned(),
+            message: TXT_TECHNICAL_ERROR.to_owned(),
             data: None,
         };
 

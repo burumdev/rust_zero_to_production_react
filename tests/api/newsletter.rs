@@ -1,5 +1,4 @@
 use linkify::{LinkFinder, LinkKind};
-use reqwest::header::COOKIE;
 use uuid::Uuid;
 use zero2prod::{domain::common::SuccessResponse, email_client::EmailSuccessResponse};
 
@@ -115,12 +114,10 @@ async fn it_returns_400_for_invalid_newsletter_data() {
 async fn it_rejects_newsletter_requests_missing_authorization() {
     let test_app = spawn_app().await;
 
-    let (csrf_token, csrf_cookie) = test_app.csrf();
-
-    let response = reqwest::Client::new()
+    let response = test_app
+        .api_client
         .post(&format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", csrf_token)
-        .header(COOKIE, csrf_cookie)
+        .header("X-CSRF-Token", test_app.csrf_token.as_str())
         .json(&serde_json::json!({
             "title": "Newsletter Title",
             "content": "Newsletter body as plain text",
@@ -142,12 +139,10 @@ async fn it_rejects_non_existing_user_login() {
     let username = Uuid::new_v4().to_string();
     let password = Uuid::new_v4().to_string();
 
-    let (csrf_token, csrf_cookie) = test_app.csrf();
-
-    let response = reqwest::Client::new()
+    let response = test_app
+        .api_client
         .post(format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", csrf_token)
-        .header(COOKIE, csrf_cookie)
+        .header("X-CSRF-Token", test_app.csrf_token.as_str())
         .basic_auth(username, Some(password))
         .json(&serde_json::json!({
             "title": "Newsletter title",
@@ -167,16 +162,15 @@ async fn it_rejects_non_existing_user_login() {
 #[tokio::test]
 async fn it_rejects_wrong_password_login() {
     let test_app = spawn_app().await;
-    let (csrf_token, csrf_cookie) = test_app.csrf();
 
     let username = test_app.test_user.username;
     let password = Uuid::new_v4().to_string();
     assert_ne!(test_app.test_user.password, password);
 
-    let response = reqwest::Client::new()
+    let response = test_app
+        .api_client
         .post(format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", csrf_token)
-        .header(COOKIE, csrf_cookie)
+        .header("X-CSRF-Token", test_app.csrf_token.as_str())
         .basic_auth(username, Some(password))
         .json(&serde_json::json!({
             "title": "Newsletter title",

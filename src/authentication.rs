@@ -1,14 +1,18 @@
 use actix_web::http::header::HeaderMap;
 use anyhow::Context;
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use argon2::{
+    Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
+    password_hash::phc::SaltString,
+};
 use base64::{
     Engine, alphabet,
     engine::{GeneralPurpose, GeneralPurposeConfig},
 };
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
+use uuid::Uuid;
 
-use crate::telemetry::spawn_blocking_with_tracing;
+use crate::{constants::MOCK_PASSWORD_HASH, telemetry::spawn_blocking_with_tracing};
 
 #[derive(thiserror::Error, Debug)]
 pub enum AuthError {
@@ -62,11 +66,7 @@ pub async fn validate_credentials(
     db: &PgPool,
 ) -> Result<uuid::Uuid, AuthError> {
     let mut user_id = None;
-    let mut expected_password_hash = SecretString::from(
-        "$argon2id$v=19$m=15000,t=2,p=1$\
-        gZiV/M1gPc22ElAH/Jh1Hw$\
-        CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno",
-    );
+    let mut expected_password_hash = SecretString::from(MOCK_PASSWORD_HASH);
 
     if let Some((stored_user_id, stored_password_hash)) =
         get_stored_credentials(&credentials.username, db)
@@ -87,7 +87,7 @@ pub async fn validate_credentials(
 }
 
 #[tracing::instrument(name = "Verify password hash", skip_all)]
-fn verify_password_hash(
+pub fn verify_password_hash(
     expected_password_hash: SecretString,
     password_candidate: SecretString,
 ) -> Result<(), AuthError> {
@@ -101,6 +101,26 @@ fn verify_password_hash(
         )
         .context("Invalid password.")
         .map_err(AuthError::InvalidCredentials)
+}
+
+pub async fn get_stored_password(
+    user_id: Uuid,
+    db: &PgPool,
+) -> Result<Option<SecretString>, anyhow::Error> {
+    let row = sqlx::query!(
+        r#"
+            SELECT password_hash
+            FROM users
+            WHERE user_id = $1
+        "#,
+        user_id,
+    )
+    .fetch_optional(db)
+    .await
+    .context("Failed to perform query to fetch password hash.")?
+    .map(|row| SecretString::from(row.password_hash));
+
+    Ok(row)
 }
 
 async fn get_stored_credentials(
@@ -121,4 +141,18 @@ async fn get_stored_credentials(
     .map(|row| (row.user_id, SecretString::from(row.password_hash)));
 
     Ok(row)
+}
+
+pub fn compute_password_hash(password: SecretString) -> Result<SecretString, anyhow::Error> {
+    let salt = SaltString::generate();
+    let password_hash = Argon2::new(
+        Algorithm::Argon2id,
+        Version::V0x13,
+        Params::new(15000, 2, 1, None).unwrap(),
+    )
+    .hash_password_with_salt(password.expose_secret().as_bytes(), &salt.to_salt())
+    .map_err(|e| AuthError::UnexpectedError(anyhow::anyhow!(e)))?
+    .to_string();
+
+    Ok(SecretString::from(password_hash))
 }

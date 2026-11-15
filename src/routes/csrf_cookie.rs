@@ -5,6 +5,10 @@ use secrecy::ExposeSecret;
 
 use crate::{middleware::csrf_middleware::get_csrf_cookie, startup::ApplicationHmacSecret};
 
+// This is only for a frontend with a different port sending
+// requests to the base url of the server
+// It sets the CSRF cookie for the frontend to be sent
+// with mutation requests like POST, PUT, DELETE
 pub async fn csrf_cookie(
     req: HttpRequest,
     hmac_secret: web::Data<ApplicationHmacSecret>,
@@ -18,7 +22,7 @@ pub async fn csrf_cookie(
 
         response
             .add_cookie(&cookie)
-            .map_err(|e| ErrorInternalServerError(e))?;
+            .map_err(ErrorInternalServerError)?;
     }
 
     Ok(response)

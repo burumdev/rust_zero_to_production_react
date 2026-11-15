@@ -1,3 +1,5 @@
+use actix_web::error::ErrorInternalServerError;
+
 pub fn error_chain_fmt(
     e: &impl std::error::Error,
     f: &mut std::fmt::Formatter<'_>,
@@ -9,4 +11,11 @@ pub fn error_chain_fmt(
         current = cause.source();
     }
     Ok(())
+}
+
+pub fn e500<E>(e: E) -> actix_web::Error
+where
+    E: std::fmt::Debug + std::fmt::Display + 'static,
+{
+    ErrorInternalServerError(e)
 }
