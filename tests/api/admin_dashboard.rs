@@ -63,3 +63,29 @@ async fn it_checks_password_fields_match_properly() {
     assert!(!json.success);
     assert!(json.message.to_lowercase().contains("should match"));
 }
+
+#[tokio::test]
+async fn it_changes_password_successfully() {
+    let test_app = spawn_app().await;
+    let new_pass = Uuid::new_v4().to_string();
+    let new_pass_check = new_pass.clone();
+
+    let login_json = serde_json::json!({
+        "username": &test_app.test_user.username,
+        "password": &test_app.test_user.password
+    });
+
+    test_app.post_login(&login_json.to_string()).await;
+
+    let change_pass_json = serde_json::json!({
+        "current_password": &test_app.test_user.password,
+        "new_password": new_pass,
+        "new_password_check": new_pass_check
+    });
+
+    let response = test_app
+        .post_change_password(&change_pass_json.to_string())
+        .await;
+
+    assert_eq!(200, response.status().as_u16());
+}
