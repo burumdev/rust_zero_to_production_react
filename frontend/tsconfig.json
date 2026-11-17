@@ -23,6 +23,5 @@
       "@utils/*": ["src/utils/*"],
       "@admin/*": ["src/features/admin/*"]
     }
-  },
-  "include": ["src"]
+  }
 }

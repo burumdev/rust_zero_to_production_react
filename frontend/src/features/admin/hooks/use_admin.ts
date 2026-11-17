@@ -1,7 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { postAdminLogin, postAdminLogout } from '@admin/api/admin_api';
-import type { AdminLoginRequest } from '@admin/admin_types';
+import {
+  postAdminChangePassword,
+  postAdminLogin,
+  postAdminLogout,
+} from '@admin/api/admin_api';
+
+import type {
+  AdminChangePasswordRequest,
+  AdminLoginRequest,
+} from '@admin/admin_types';
 
 export const useAdminLogin = () => {
   return useMutation({
@@ -18,5 +26,13 @@ export const useAdminLogout = () => {
   return useMutation({
     mutationKey: ['adminLogout'],
     mutationFn: () => postAdminLogout(),
+  });
+};
+
+export const useAdminChangePassword = () => {
+  return useMutation({
+    mutationKey: ['adminChangePassword'],
+    mutationFn: (payload: AdminChangePasswordRequest) =>
+      postAdminChangePassword(payload),
   });
 };

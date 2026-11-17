@@ -1,6 +1,7 @@
 import type { TabOptionSettings } from '@components/TabOption';
 import Tabs from '@components/Tabs';
 import { useState } from 'react';
+import Account from './Account';
 
 const tabOptions: TabOptionSettings[] = [
   {
@@ -28,11 +29,7 @@ const AdminPanel = () => {
           <div className="p-4 step-box bg-darkgray">Chat Rooms</div>
         </div>
       )}
-      {activeTabIndex === 1 && (
-        <div className="w-full h-full mt-4 px-4">
-          <div className="p-4 step-box bg-darkgray">Account</div>
-        </div>
-      )}
+      {activeTabIndex === 1 && <Account />}
     </div>
   );
 };
