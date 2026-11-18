@@ -1,12 +1,7 @@
-use actix_web::http::header::HeaderMap;
 use anyhow::Context;
 use argon2::{
     Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
     password_hash::phc::SaltString,
-};
-use base64::{
-    Engine, alphabet,
-    engine::{GeneralPurpose, GeneralPurposeConfig},
 };
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
@@ -25,39 +20,6 @@ pub enum AuthError {
 pub struct Credentials {
     pub username: String,
     pub password: SecretString,
-}
-
-pub fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
-    let header_value = headers
-        .get("Authorization")
-        .context("The 'Authorization' header was missing")?
-        .to_str()
-        .context("The 'Authorization' header was not a valid UTF8 string.")?;
-    let base64encoded_segment = header_value
-        .strip_prefix("Basic ")
-        .context("The authorization scheme was not 'Basic'.")?;
-
-    let base64engine = GeneralPurpose::new(&alphabet::STANDARD, GeneralPurposeConfig::default());
-    let decoded_bytes = base64engine
-        .decode(base64encoded_segment)
-        .context("Failed to base64-decode 'Basic' credentials.")?;
-    let decoded_credentials = String::from_utf8(decoded_bytes)
-        .context("The decoded credential string is not valid UTF8.")?;
-
-    let mut credentials = decoded_credentials.splitn(2, ':');
-    let username = credentials
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("A username must be provided in 'Basic' auth."))?
-        .to_string();
-    let password = credentials
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("A password must be provided in 'Basic' auth."))?
-        .to_string();
-
-    Ok(Credentials {
-        username,
-        password: SecretString::from(password),
-    })
 }
 
 #[tracing::instrument(name = "Validate credentials", skip_all)]
@@ -103,26 +65,43 @@ pub fn verify_password_hash(
         .map_err(AuthError::InvalidCredentials)
 }
 
-pub async fn get_stored_password(
-    user_id: Uuid,
-    db: &PgPool,
-) -> Result<Option<SecretString>, anyhow::Error> {
+#[tracing::instrument(name = "Get stored username", skip_all)]
+pub async fn get_stored_username(user_id: Uuid, db: &PgPool) -> Result<String, anyhow::Error> {
     let row = sqlx::query!(
         r#"
-            SELECT password_hash
-            FROM users
-            WHERE user_id = $1
+        SELECT username
+        FROM users
+        WHERE user_id = $1
         "#,
         user_id,
     )
-    .fetch_optional(db)
+    .fetch_one(db)
     .await
-    .context("Failed to perform query to fetch password hash.")?
-    .map(|row| SecretString::from(row.password_hash));
-
-    Ok(row)
+    .context("Failed to perform a query to retrieve a username.")?;
+    Ok(row.username)
 }
 
+// pub async fn get_stored_password(
+//     user_id: Uuid,
+//     db: &PgPool,
+// ) -> Result<Option<SecretString>, anyhow::Error> {
+//     let row = sqlx::query!(
+//         r#"
+//             SELECT password_hash
+//             FROM users
+//             WHERE user_id = $1
+//         "#,
+//         user_id,
+//     )
+//     .fetch_optional(db)
+//     .await
+//     .context("Failed to perform query to fetch password hash.")?
+//     .map(|row| SecretString::from(row.password_hash));
+
+//     Ok(row)
+// }
+
+#[tracing::instrument(name = "Get stored credentials", skip_all)]
 async fn get_stored_credentials(
     username: &str,
     db: &PgPool,

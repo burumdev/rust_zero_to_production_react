@@ -1,5 +1,4 @@
 use linkify::{LinkFinder, LinkKind};
-use uuid::Uuid;
 use zero2prod::{domain::common::SuccessResponse, email_client::EmailSuccessResponse};
 
 use crate::helpers::{TestApp, spawn_app};
@@ -23,6 +22,14 @@ async fn create_unconfirmed_subscriber(test_app: &TestApp) -> reqwest::Response 
 async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
     let test_app = spawn_app().await;
 
+    let login_json = serde_json::json!({
+        "username": &test_app.test_user.username,
+        "password": &test_app.test_user.password,
+    });
+
+    let response = test_app.post_login(&login_json.to_string()).await;
+    assert_eq!(response.status().as_u16(), 200);
+
     create_unconfirmed_subscriber(&test_app).await;
 
     let newsletter_body = serde_json::json!({
@@ -32,12 +39,23 @@ async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
 
     let response = test_app.post_newsletters(newsletter_body).await;
 
+    // The request should return 200 as it will silently avoid sending
+    // newsletters to unconfirmed subscribers.
+    // To test correctly, check email inbox to see if any emails are sent to Chuck Norris
     assert_eq!(response.status().as_u16(), 200);
 }
 
 #[tokio::test]
 async fn it_delivers_newsletters_to_confirmed_subscribers() {
     let test_app = spawn_app().await;
+
+    let login_json = serde_json::json!({
+        "username": &test_app.test_user.username,
+        "password": &test_app.test_user.password,
+    });
+
+    let response = test_app.post_login(&login_json.to_string()).await;
+    assert_eq!(response.status().as_u16(), 200);
 
     // The response value is the response from email testing API
     // in the format: {success: bool, message_ids: [message_id]}
@@ -85,6 +103,15 @@ async fn it_delivers_newsletters_to_confirmed_subscribers() {
 #[tokio::test]
 async fn it_returns_400_for_invalid_newsletter_data() {
     let test_app = spawn_app().await;
+
+    let login_json = serde_json::json!({
+        "username": &test_app.test_user.username,
+        "password": &test_app.test_user.password,
+    });
+
+    let response = test_app.post_login(&login_json.to_string()).await;
+    assert_eq!(response.status().as_u16(), 200);
+
     let test_cases = vec![
         (
             serde_json::json!({
@@ -108,81 +135,4 @@ async fn it_returns_400_for_invalid_newsletter_data() {
             error_message
         )
     }
-}
-
-#[tokio::test]
-async fn it_rejects_newsletter_requests_missing_authorization() {
-    let test_app = spawn_app().await;
-
-    let response = test_app
-        .api_client
-        .post(&format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", test_app.csrf_token.as_str())
-        .json(&serde_json::json!({
-            "title": "Newsletter Title",
-            "content": "Newsletter body as plain text",
-        }))
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
-    assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    );
-}
-
-#[tokio::test]
-async fn it_rejects_non_existing_user_login() {
-    let test_app = spawn_app().await;
-    let username = Uuid::new_v4().to_string();
-    let password = Uuid::new_v4().to_string();
-
-    let response = test_app
-        .api_client
-        .post(format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", test_app.csrf_token.as_str())
-        .basic_auth(username, Some(password))
-        .json(&serde_json::json!({
-            "title": "Newsletter title",
-            "content": "Newsletter body. Non existing user is rejected.",
-        }))
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
-    assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    );
-}
-
-#[tokio::test]
-async fn it_rejects_wrong_password_login() {
-    let test_app = spawn_app().await;
-
-    let username = test_app.test_user.username;
-    let password = Uuid::new_v4().to_string();
-    assert_ne!(test_app.test_user.password, password);
-
-    let response = test_app
-        .api_client
-        .post(format!("{}/api/newsletters", &test_app.address))
-        .header("X-CSRF-Token", test_app.csrf_token.as_str())
-        .basic_auth(username, Some(password))
-        .json(&serde_json::json!({
-            "title": "Newsletter title",
-            "content": "Newsletter body. Non existing user is rejected.",
-        }))
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
-    assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    );
 }

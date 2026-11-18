@@ -1,6 +1,5 @@
 use actix_web::{
     HttpResponse, ResponseError,
-    error::ErrorUnauthorized,
     http::StatusCode,
     web::{self, Json},
 };
@@ -9,11 +8,12 @@ use sqlx::{Executor, PgPool};
 use uuid::Uuid;
 
 use crate::{
-    authentication::{AuthError, compute_password_hash, get_stored_password, verify_password_hash},
-    constants::{MOCK_PASSWORD_HASH, TXT_TECHNICAL_ERROR},
+    authentication::{
+        AuthError, Credentials, compute_password_hash, get_stored_username, validate_credentials,
+    },
+    constants::TXT_TECHNICAL_ERROR,
     domain::common::SuccessResponse,
-    session_state::TypedSession,
-    telemetry::spawn_blocking_with_tracing,
+    middleware::UserId,
     utils::{e500, error_chain_fmt},
 };
 
@@ -84,13 +84,11 @@ fn check_passwords_match(p1: &SecretString, p2: &SecretString) -> Result<(), Adm
 
 pub async fn change_password(
     form: web::Json<FormDataChangePassword>,
-    session: TypedSession,
     db: web::Data<PgPool>,
+    user_id: web::ReqData<UserId>,
 ) -> Result<Json<SuccessResponse>, actix_web::Error> {
-    let maybe_user_id = session.get_user_id().map_err(e500)?;
-    let Some(user_id) = maybe_user_id else {
-        return Err(ErrorUnauthorized("Unauthorized"));
-    };
+    let user_id = user_id.into_inner();
+    let username = get_stored_username(*user_id, &db).await.map_err(e500)?;
 
     let FormDataChangePassword {
         current_password,
@@ -98,17 +96,13 @@ pub async fn change_password(
         new_password_check,
     } = form.0;
 
-    let mut expected_password_hash = SecretString::from(MOCK_PASSWORD_HASH);
-    if let Some(stored_password_hash) = get_stored_password(user_id, &db)
-        .await
-        .map_err(|_| AdminPasswordError::UnexpectedError)?
-    {
-        expected_password_hash = stored_password_hash;
-    }
+    let credentials = Credentials {
+        username,
+        password: current_password,
+    };
 
-    spawn_blocking_with_tracing(|| verify_password_hash(expected_password_hash, current_password))
+    validate_credentials(credentials, &db)
         .await
-        .map_err(|_| AdminPasswordError::UnexpectedError)?
         .map_err(|e| match e {
             AuthError::UnexpectedError(_) => AdminPasswordError::UnexpectedError,
             AuthError::InvalidCredentials(_) => AdminPasswordError::AuthError,
@@ -120,7 +114,7 @@ pub async fn change_password(
     let password_hash =
         compute_password_hash(new_password).map_err(|_| AdminPasswordError::UnexpectedError)?;
 
-    update_user_password(user_id, password_hash, &db)
+    update_user_password(*user_id, password_hash, &db)
         .await
         .map_err(|_| AdminPasswordError::UnexpectedError)?;
 

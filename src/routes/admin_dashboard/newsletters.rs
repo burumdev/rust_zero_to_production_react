@@ -1,5 +1,5 @@
 use actix_web::{
-    HttpRequest, HttpResponse, ResponseError,
+    HttpResponse, ResponseError,
     http::{
         StatusCode,
         header::{self, HeaderValue},
@@ -10,10 +10,8 @@ use anyhow::Context;
 use sqlx::PgPool;
 
 use crate::{
-    authentication::{AuthError, basic_authentication, validate_credentials},
-    domain::subscriber::ValidEmail,
-    email_client::EmailClient,
-    utils::error_chain_fmt,
+    authentication::get_stored_username, domain::subscriber::ValidEmail, email_client::EmailClient,
+    middleware::UserId, utils::error_chain_fmt,
 };
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -73,17 +71,15 @@ pub async fn publish_newsletter(
     body: web::Json<NewsletterBody>,
     db: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
-    request: HttpRequest,
+    user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, PublishError> {
-    let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
-    tracing::Span::current().record("username", tracing::field::display(&credentials.username));
-    let user_id = validate_credentials(credentials, &db)
+    let user_id = user_id.into_inner();
+    let username = get_stored_username(*user_id, &db)
         .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
-        })?;
-    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+        .map_err(PublishError::UnexpectedError)?;
+
+    tracing::Span::current().record("username", tracing::field::display(&username));
+    tracing::Span::current().record("user_id", tracing::field::display(*user_id));
 
     let confirmed_subscribers = get_confirmed_subscribers(&db).await?;
     for subscriber in confirmed_subscribers {

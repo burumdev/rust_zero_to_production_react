@@ -13,13 +13,14 @@ use tracing_actix_web::TracingLogger;
 use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
-    middleware::csrf_middleware::csrf_middleware,
+    middleware::{auth_middleware, csrf_middleware::csrf_middleware},
     routes::{
-        admin_dashboard::{logout::log_out, password::change_password},
+        admin_dashboard::{
+            logout::log_out, newsletters::publish_newsletter, password::change_password,
+        },
         csrf_cookie::csrf_cookie,
         health_check::health_check,
         login::login,
-        newsletters::publish_newsletter,
         subscriptions::subscribe,
         subscriptions_confirm::confirm,
     },
@@ -134,12 +135,16 @@ async fn run(
                 web::scope("/api")
                     .route("/subscriptions", web::post().to(subscribe))
                     .route("/subscriptions/confirm", web::get().to(confirm))
-                    .route("/newsletters", web::post().to(publish_newsletter))
                     .route("/health_check", web::get().to(health_check))
                     .route("/csrf_cookie", web::get().to(csrf_cookie))
                     .route("/login", web::post().to(login))
-                    .route("/admin/password", web::post().to(change_password))
-                    .route("/admin/logout", web::post().to(log_out)),
+                    .service(
+                        web::scope("/admin")
+                            .wrap(from_fn(auth_middleware::auth_middleware))
+                            .route("/newsletters", web::post().to(publish_newsletter))
+                            .route("/password", web::post().to(change_password))
+                            .route("/logout", web::post().to(log_out)),
+                    ),
             )
             .app_data(db.clone())
             .app_data(email_client.clone())

@@ -48,6 +48,20 @@ impl TestApp {
         response
     }
 
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        let response = self
+            .api_client
+            .post(format!("{}/api/admin/newsletters", &self.address))
+            .header("X-CSRF-Token", self.csrf_token.as_str())
+            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        response
+    }
+
     pub async fn post_login(&self, json_str: &str) -> reqwest::Response {
         let response = self
             .api_client
@@ -69,20 +83,6 @@ impl TestApp {
             .header("Content-Type", "application/json")
             .header("X-CSRF-Token", self.csrf_token.as_str())
             .body(json_str.to_owned())
-            .send()
-            .await
-            .expect("Failed to execute request.");
-
-        response
-    }
-
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        let response = self
-            .api_client
-            .post(format!("{}/api/newsletters", &self.address))
-            .header("X-CSRF-Token", self.csrf_token.as_str())
-            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
-            .json(&body)
             .send()
             .await
             .expect("Failed to execute request.");
