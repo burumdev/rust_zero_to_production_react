@@ -1,17 +1,18 @@
 use actix_web::{
     HttpResponse, ResponseError,
-    http::{
-        StatusCode,
-        header::{self, HeaderValue},
-    },
-    web,
+    http::StatusCode,
+    web::{self, Json},
 };
 use anyhow::Context;
 use sqlx::PgPool;
 
 use crate::{
-    authentication::get_stored_username, domain::subscriber::ValidEmail, email_client::EmailClient,
-    middleware::UserId, utils::error_chain_fmt,
+    authentication::get_stored_username,
+    constants::TXT_TECHNICAL_ERROR,
+    domain::{common::SuccessResponse, subscriber::ValidEmail},
+    email_client::EmailClient,
+    middleware::UserId,
+    utils::error_chain_fmt,
 };
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -44,20 +45,20 @@ impl ResponseError for PublishError {
         }
     }
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
+        let res_err = SuccessResponse {
+            success: false,
+            message: TXT_TECHNICAL_ERROR.to_owned(),
+            data: None,
+        };
+
+        let mut response = HttpResponse::build(self.status_code());
+
         match self {
-            PublishError::UnexpectedError(_) => {
-                HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-            PublishError::AuthError(_) => {
-                let mut response = HttpResponse::new(StatusCode::UNAUTHORIZED);
-                let header_value = HeaderValue::from_str(r#"Basic realm="publish""#).unwrap();
-
-                response
-                    .headers_mut()
-                    .insert(header::WWW_AUTHENTICATE, header_value);
-
-                response
-            }
+            PublishError::UnexpectedError(_) => response.json(res_err),
+            PublishError::AuthError(e) => response.json(SuccessResponse {
+                message: e.to_string(),
+                ..res_err
+            }),
         }
     }
 }
@@ -72,7 +73,7 @@ pub async fn publish_newsletter(
     db: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
-) -> Result<HttpResponse, PublishError> {
+) -> Result<Json<SuccessResponse>, PublishError> {
     let user_id = user_id.into_inner();
     let username = get_stored_username(*user_id, &db)
         .await
@@ -102,7 +103,11 @@ pub async fn publish_newsletter(
         }
     }
 
-    Ok(HttpResponse::Ok().finish())
+    Ok(Json(SuccessResponse {
+        success: true,
+        message: "Newsletter published".to_owned(),
+        data: None,
+    }))
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip_all)]

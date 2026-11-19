@@ -1,6 +1,7 @@
 import type {
   AdminChangePasswordRequest,
   AdminLoginRequest,
+  AdminPublishNewsletterRequest,
 } from '@admin/admin_types';
 import { apiFetch } from '@utils/api_client';
 import type { MutationResponse } from 'src/common_types';
@@ -22,6 +23,15 @@ export const postAdminChangePassword = async (
   data: AdminChangePasswordRequest,
 ) => {
   return apiFetch<MutationResponse>('admin/password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const postAdminPublishNewsletter = async (
+  data: AdminPublishNewsletterRequest,
+) => {
+  return apiFetch<MutationResponse>('admin/newsletters', {
     method: 'POST',
     body: JSON.stringify(data),
   });

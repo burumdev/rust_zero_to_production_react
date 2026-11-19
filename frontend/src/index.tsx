@@ -24,7 +24,7 @@ if (rootEl) {
             <Route element={<MainLayout />}>
               <Route path="/" element={<App />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/adminpanel" element={<AdminPanel />} />
+              <Route path="/adminpanel/*" element={<AdminPanel />} />
             </Route>
           </Routes>
           <ReactQueryDevtools initialIsOpen={false} />

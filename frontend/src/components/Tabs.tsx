@@ -1,24 +1,24 @@
 import { v6 as uuidv6 } from 'uuid';
+import { useLocation } from 'react-router';
+
 import type { TabOptionSettings } from './TabOption';
 import TabOption from './TabOption';
 
 interface TabsProps {
   options: TabOptionSettings[];
-  activeIndex: number;
-  onChange: (index: number) => void;
 }
 
-const Tabs: React.FC<TabsProps> = ({ options, activeIndex, onChange }) => {
+const Tabs: React.FC<TabsProps> = ({ options }) => {
+  const location = useLocation();
+
   return (
     <div className="w-full h-full flex justify-between">
-      {options.map((opt, index) => {
+      {options.map((opt) => {
         return (
           <TabOption
             {...opt}
             key={uuidv6()}
-            index={index}
-            isActive={activeIndex === index}
-            onClick={(index) => onChange(index)}
+            isActive={location.pathname === opt.path}
           />
         );
       })}

@@ -8,3 +8,8 @@ export type AdminChangePasswordRequest = {
   new_password: string;
   new_password_check: string;
 };
+
+export type AdminPublishNewsletterRequest = {
+  title: string;
+  content: string;
+};

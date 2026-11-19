@@ -4,11 +4,13 @@ import {
   postAdminChangePassword,
   postAdminLogin,
   postAdminLogout,
+  postAdminPublishNewsletter,
 } from '@admin/api/admin_api';
 
 import type {
   AdminChangePasswordRequest,
   AdminLoginRequest,
+  AdminPublishNewsletterRequest,
 } from '@admin/admin_types';
 
 export const useAdminLogin = () => {
@@ -34,5 +36,13 @@ export const useAdminChangePassword = () => {
     mutationKey: ['adminChangePassword'],
     mutationFn: (payload: AdminChangePasswordRequest) =>
       postAdminChangePassword(payload),
+  });
+};
+
+export const useAdminPublishNewsletter = () => {
+  return useMutation({
+    mutationKey: ['adminPublishNewsletter'],
+    mutationFn: (payload: AdminPublishNewsletterRequest) =>
+      postAdminPublishNewsletter(payload),
   });
 };

@@ -101,7 +101,7 @@ const Login = () => {
   useEffect(() => {
     if (isSuccess) {
       sessionStorage.setItem('login', 'yes');
-      navigate('/adminpanel');
+      navigate('/adminpanel/chat');
     }
   }, [isSuccess]);
 

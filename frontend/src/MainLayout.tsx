@@ -12,12 +12,14 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <>
-      <Header />
-      <div className="flex justify-center">
-        <Outlet />
+    <div className="w-full h-full flex justify-center">
+      <div className="w-[1536px]">
+        <Header />
+        <div className="flex justify-center">
+          <Outlet />
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 

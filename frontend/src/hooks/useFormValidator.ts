@@ -1,8 +1,8 @@
-import { is_valid_email } from '@utils/validators';
 import { useEffect, useState } from 'react';
 
 export type FormDataObject = Record<string, string>;
-export type ValidationRuleName = 'empty' | 'email' | 'min' | 'same' | 'notSame';
+export type ValidationRuleName =
+  'empty' | 'email' | 'min' | 'max' | 'same' | 'notSame';
 
 type ValidationRuleBase<FDT> = {
   ruleName: ValidationRuleName;
@@ -23,6 +23,10 @@ export type ValidationRule<FDT> =
       min: number;
     })
   | (ValidationRuleBase<FDT> & {
+      ruleName: 'max';
+      max: number;
+    })
+  | (ValidationRuleBase<FDT> & {
       ruleName: 'same';
       samenessKey: keyof FDT & string;
     })
@@ -34,7 +38,16 @@ export type ValidationRule<FDT> =
 export type ValidationRuleSet<FDT> = Record<keyof FDT, ValidationRule<FDT>[]>;
 type ValidationErrors<FDT> = Partial<Record<keyof FDT, ValidationRule<FDT>[]>>;
 
-const validate = <FDT>(
+export const is_valid_email = (email: string) => {
+  const regex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*.[a-zA-Z]{2,}$/;
+
+  const is_valid = regex.test(email);
+
+  return is_valid;
+};
+
+const validate = <FDT,>(
   value: string,
   rule: ValidationRule<FDT>,
   otherValue: string | undefined = undefined,
@@ -45,11 +58,15 @@ const validate = <FDT>(
     case 'empty':
       return value.length > 0;
     case 'min':
-      return value.length > 0 && value.length >= rule.min;
+      return value.length >= rule.min;
+    case 'max':
+      return value.length <= rule.max;
     case 'same':
       return value === otherValue;
     case 'notSame':
       return value !== otherValue;
+    default:
+      throw new TypeError(`Rule name not recognised.`);
   }
 };
 
@@ -61,7 +78,8 @@ const useFormValidator = <FDT extends FormDataObject>(
   const [formData, setFormData] = useState<FDT>(initialFormData);
   const [formErrors, setFormErrors] = useState<ValidationErrors<FDT>>({});
 
-  // Validate the initial form data
+  // Validate the initial form data if
+  // instructed to do so
   useEffect(() => {
     if (validateInitital) {
       for (const [key, value] of Object.entries(formData)) {
@@ -123,6 +141,8 @@ const useFormValidator = <FDT extends FormDataObject>(
       ...formData,
       [field]: value,
     });
+    // This is OK to do because we pass up-to-date value to the function
+    // formErrors will reflect the current situation
     validateFormField(field as string, value);
   };
 

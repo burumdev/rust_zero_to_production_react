@@ -62,10 +62,7 @@ impl ResponseError for AdminPasswordError {
                 message: "Password and its repeat should match".to_owned(),
                 ..res_err
             }),
-            AdminPasswordError::UnexpectedError => response.json(SuccessResponse {
-                message: TXT_TECHNICAL_ERROR.to_owned(),
-                ..res_err
-            }),
+            AdminPasswordError::UnexpectedError => response.json(res_err),
             AdminPasswordError::AuthError => response.json(SuccessResponse {
                 message: "Current password could not be verified".to_owned(),
                 ..res_err
