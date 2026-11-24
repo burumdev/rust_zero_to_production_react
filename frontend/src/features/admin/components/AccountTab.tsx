@@ -2,11 +2,11 @@ import type { AdminChangePasswordRequest } from '@admin/admin_types';
 import { useAdminChangePassword } from '@admin/hooks/use_admin';
 import Button from '@components/Button';
 import TextInput from '@components/TextInput';
-import { useEffect, useState } from 'react';
 import useFormValidator, {
   type ValidationRule,
   type ValidationRuleSet,
-} from 'src/hooks/useFormValidator';
+} from '@hooks/useFormValidator';
+import { useEffect, useState } from 'react';
 
 type FormData = AdminChangePasswordRequest;
 

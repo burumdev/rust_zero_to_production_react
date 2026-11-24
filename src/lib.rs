@@ -3,6 +3,7 @@ pub mod configuration;
 pub mod constants;
 pub mod domain;
 pub mod email_client;
+pub mod idempotency;
 pub mod middleware;
 pub mod routes;
 pub mod session_state;

@@ -13,7 +13,11 @@ use tracing_actix_web::TracingLogger;
 use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
-    middleware::{auth_middleware, csrf_middleware::csrf_middleware},
+    middleware::{
+        auth_middleware::{self, auth_middleware},
+        csrf_middleware::csrf_middleware,
+        idempotency_middleware::{self, idempotency_middleware},
+    },
     routes::{
         admin_dashboard::{
             logout::log_out, newsletters::publish_newsletter, password::change_password,
@@ -119,6 +123,7 @@ async fn run(
                 actix_web::http::header::CONTENT_TYPE,
                 actix_web::http::header::AUTHORIZATION,
                 HeaderName::from_str("X-CSRF-Token").unwrap(),
+                HeaderName::from_str("Idempotency-Key").unwrap(),
             ])
             .supports_credentials()
             .max_age(3600);
@@ -137,10 +142,15 @@ async fn run(
                     .route("/subscriptions/confirm", web::get().to(confirm))
                     .route("/health_check", web::get().to(health_check))
                     .route("/csrf_cookie", web::get().to(csrf_cookie))
-                    .route("/login", web::post().to(login))
+                    .service(
+                        web::resource("/login")
+                            .wrap(from_fn(idempotency_middleware))
+                            .route(web::post().to(login)),
+                    )
                     .service(
                         web::scope("/admin")
-                            .wrap(from_fn(auth_middleware::auth_middleware))
+                            .wrap(from_fn(auth_middleware))
+                            .wrap(from_fn(idempotency_middleware))
                             .route("/newsletters", web::post().to(publish_newsletter))
                             .route("/password", web::post().to(change_password))
                             .route("/logout", web::post().to(log_out)),

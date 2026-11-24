@@ -1,3 +1,5 @@
+import { CSRF_HEADER_KEY, IDEMPOTENCY_HEADER_KEY } from '../constants';
+
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
 export class ApiError extends Error {
@@ -13,9 +15,19 @@ export class ApiError extends Error {
 
 let csrfToken: string | undefined = undefined;
 
+type CustomHeadersInit = HeadersInit & {
+  [IDEMPOTENCY_HEADER_KEY]?: string;
+  [CSRF_HEADER_KEY]: string;
+};
+
+type CustomReqInit = RequestInit & {
+  headers?: CustomHeadersInit;
+};
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {},
+  options: CustomReqInit = {},
+  idemKey: string | undefined = undefined,
 ): Promise<T> {
   if (!csrfToken) {
     csrfToken =
@@ -25,15 +37,21 @@ export async function apiFetch<T>(
         ?.split('=')[1] || '';
   }
 
-  const res = await fetch(`${API_URL}/${path}`, {
+  const reqOpts: CustomReqInit = {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken,
+      [CSRF_HEADER_KEY]: csrfToken,
       ...options.headers,
     },
     ...options,
-  });
+  };
+
+  if (idemKey && reqOpts.headers) {
+    reqOpts.headers[IDEMPOTENCY_HEADER_KEY] = idemKey;
+  }
+
+  const res = await fetch(`${API_URL}/${path}`, reqOpts);
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

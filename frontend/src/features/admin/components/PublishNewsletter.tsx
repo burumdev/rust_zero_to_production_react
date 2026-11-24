@@ -2,9 +2,10 @@ import type { AdminPublishNewsletterRequest } from '@admin/admin_types';
 import { useAdminPublishNewsletter } from '@admin/hooks/use_admin';
 import Button from '@components/Button';
 import TextInput from '@components/TextInput';
+import useFormValidator, {
+  type ValidationRuleSet,
+} from '@hooks/useFormValidator';
 import { useEffect, useState } from 'react';
-import type { ValidationRuleSet } from 'src/hooks/useFormValidator';
-import useFormValidator from 'src/hooks/useFormValidator';
 
 type FormData = AdminPublishNewsletterRequest;
 

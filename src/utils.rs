@@ -1,4 +1,4 @@
-use actix_web::error::ErrorInternalServerError;
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 
 pub fn error_chain_fmt(
     e: &impl std::error::Error,
@@ -18,4 +18,11 @@ where
     E: std::fmt::Debug + std::fmt::Display + 'static,
 {
     ErrorInternalServerError(e)
+}
+
+pub fn e400<E>(e: E) -> actix_web::Error
+where
+    E: std::fmt::Debug + std::fmt::Display + 'static,
+{
+    ErrorBadRequest(e)
 }
