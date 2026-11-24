@@ -18,45 +18,7 @@ async fn create_unconfirmed_subscriber(test_app: &TestApp) -> reqwest::Response 
     response
 }
 
-#[tokio::test]
-async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
-    let test_app = spawn_app().await;
-
-    let login_json = serde_json::json!({
-        "username": &test_app.test_user.username,
-        "password": &test_app.test_user.password,
-    });
-
-    let response = test_app.post_login(&login_json.to_string()).await;
-    assert_eq!(response.status().as_u16(), 200);
-
-    create_unconfirmed_subscriber(&test_app).await;
-
-    let newsletter_body = serde_json::json!({
-        "title": "Test Newsletter Title",
-        "content": "Newsletter body.",
-    });
-
-    let response = test_app.post_newsletters(newsletter_body).await;
-
-    // The request should return 200 as it will silently avoid sending
-    // newsletters to unconfirmed subscribers.
-    // To test correctly, check email inbox to see if any emails are sent to Chuck Norris
-    assert_eq!(response.status().as_u16(), 200);
-}
-
-#[tokio::test]
-async fn it_delivers_newsletters_to_confirmed_subscribers() {
-    let test_app = spawn_app().await;
-
-    let login_json = serde_json::json!({
-        "username": &test_app.test_user.username,
-        "password": &test_app.test_user.password,
-    });
-
-    let response = test_app.post_login(&login_json.to_string()).await;
-    assert_eq!(response.status().as_u16(), 200);
-
+async fn create_confirmed_subscriber(test_app: &TestApp) -> reqwest::Response {
     // The response value is the response from email testing API
     // in the format: {success: bool, message_ids: [message_id]}
     // We then send another request to email testing api with the message_id
@@ -78,39 +40,65 @@ async fn it_delivers_newsletters_to_confirmed_subscribers() {
     let mut link_finder = LinkFinder::new();
     link_finder.kinds(&[LinkKind::Url]);
 
-    for link in link_finder.links(&email_txt) {
-        if link.as_str().contains("/confirm?") {
-            reqwest::Client::new()
-                .get(link.as_str())
-                .send()
-                .await
-                .expect("Failed To execute request.");
-
-            let newsletter_body = serde_json::json!({
-                "title": "Test Newsletter Title",
-                "content": "Newsletter body.",
-            });
-
-            let response = test_app.post_newsletters(newsletter_body).await;
-
-            assert_eq!(response.status().as_u16(), 200);
-        } else {
-            panic!("Email confirm link was malformed!");
-        }
+    let maybe_link = link_finder.links(&email_txt).last();
+    if let Some(link) = maybe_link
+        && link.as_str().contains("/confirm?")
+    {
+        reqwest::Client::new()
+            .get(link.as_str())
+            .send()
+            .await
+            .expect("Failed To execute request.")
+    } else {
+        panic!("Email confirm link was malformed!");
     }
+}
+
+#[tokio::test]
+async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
+    let test_app = spawn_app().await;
+
+    test_app.test_user.login(&test_app).await;
+
+    let response = create_unconfirmed_subscriber(&test_app).await;
+    assert_eq!(response.status().as_u16(), 200);
+
+    let newsletter_body = serde_json::json!({
+        "title": "Test Newsletter Title",
+        "content": "Newsletter body.",
+    });
+
+    let response = test_app.post_newsletters(newsletter_body).await;
+
+    // The request should return 200 as it will silently avoid sending
+    // newsletters to unconfirmed subscribers.
+    // To test correctly, check email inbox to see if any emails are sent to Chuck Norris
+    assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn it_delivers_newsletters_to_confirmed_subscribers() {
+    let test_app = spawn_app().await;
+
+    test_app.test_user.login(&test_app).await;
+
+    let response = create_confirmed_subscriber(&test_app).await;
+    assert_eq!(response.status().as_u16(), 200);
+
+    let newsletter_body = serde_json::json!({
+        "title": "Test Newsletter Title",
+        "content": "Newsletter body.",
+    });
+
+    let response = test_app.post_newsletters(newsletter_body).await;
+
+    assert_eq!(response.status().as_u16(), 200);
 }
 
 #[tokio::test]
 async fn it_returns_400_for_invalid_newsletter_data() {
     let test_app = spawn_app().await;
-
-    let login_json = serde_json::json!({
-        "username": &test_app.test_user.username,
-        "password": &test_app.test_user.password,
-    });
-
-    let response = test_app.post_login(&login_json.to_string()).await;
-    assert_eq!(response.status().as_u16(), 200);
+    test_app.test_user.login(&test_app).await;
 
     let test_cases = vec![
         (
@@ -135,4 +123,24 @@ async fn it_returns_400_for_invalid_newsletter_data() {
             error_message
         )
     }
+}
+
+#[tokio::test]
+async fn it_idempotently_handles_newsletter_creation() {
+    let test_app = spawn_app().await;
+    let response = create_confirmed_subscriber(&test_app).await;
+    assert_eq!(response.status().as_u16(), 200);
+
+    let newsletter_body = serde_json::json!({
+        "title": "Newsletter Title",
+        "content": "Newsletter content as plain text",
+        "idempotency_key": &uuid::Uuid::new_v4().to_string()
+    });
+
+    let response = test_app.post_newsletters(newsletter_body.clone()).await;
+    assert_eq!(response.status().as_u16(), 200);
+
+    todo!();
+    // let response = test_app.post_newsletters(newsletter_body).await;
+    // assert_eq!(response.status().as_u16(), 200);
 }

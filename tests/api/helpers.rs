@@ -122,6 +122,16 @@ impl TestUser {
         .await
         .expect("Failed to store test user.");
     }
+
+    pub async fn login(&self, test_app: &TestApp) {
+        let login_json = serde_json::json!({
+            "username": &test_app.test_user.username,
+            "password": &test_app.test_user.password,
+        });
+
+        let response = test_app.post_login(&login_json.to_string()).await;
+        assert_eq!(response.status().as_u16(), 200);
+    }
 }
 
 static TRACING: LazyLock<()> = LazyLock::new(|| {
