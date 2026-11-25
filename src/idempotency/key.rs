@@ -1,5 +1,6 @@
 use crate::constants::IDEMPOTENCY_MAX_LENGTH;
 
+#[derive(Clone)]
 pub struct IdempotencyKey(String);
 
 impl TryFrom<String> for IdempotencyKey {

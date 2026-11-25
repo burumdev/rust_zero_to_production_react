@@ -11,6 +11,7 @@ use crate::{
     constants::TXT_TECHNICAL_ERROR,
     domain::{common::SuccessResponse, subscriber::ValidEmail},
     email_client::EmailClient,
+    idempotency::{key::IdempotencyKey, persistence::get_saved_response},
     middleware::UserId,
     utils::error_chain_fmt,
 };
@@ -73,8 +74,16 @@ pub async fn publish_newsletter(
     db: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
-) -> Result<Json<SuccessResponse>, PublishError> {
+    idempotency_key: web::ReqData<IdempotencyKey>,
+) -> Result<HttpResponse, PublishError> {
     let user_id = user_id.into_inner();
+    if let Some(saved_response) = get_saved_response(&db, &idempotency_key, *user_id)
+        .await
+        .map_err(PublishError::UnexpectedError)?
+    {
+        return Ok(saved_response);
+    }
+
     let username = get_stored_username(*user_id, &db)
         .await
         .map_err(PublishError::UnexpectedError)?;
@@ -103,11 +112,13 @@ pub async fn publish_newsletter(
         }
     }
 
-    Ok(Json(SuccessResponse {
-        success: true,
-        message: "Newsletter published".to_owned(),
-        data: None,
-    }))
+    Ok(
+        HttpResponse::build(StatusCode::OK).json(Json(SuccessResponse {
+            success: true,
+            message: "Newsletter published".to_owned(),
+            data: None,
+        })),
+    )
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip_all)]
