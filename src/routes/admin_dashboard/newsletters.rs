@@ -11,7 +11,10 @@ use crate::{
     constants::TXT_TECHNICAL_ERROR,
     domain::{common::SuccessResponse, subscriber::ValidEmail},
     email_client::EmailClient,
-    idempotency::{key::IdempotencyKey, persistence::get_saved_response},
+    idempotency::{
+        key::IdempotencyKey,
+        persistence::{get_saved_response, save_response},
+    },
     middleware::UserId,
     utils::error_chain_fmt,
 };
@@ -112,13 +115,17 @@ pub async fn publish_newsletter(
         }
     }
 
-    Ok(
-        HttpResponse::build(StatusCode::OK).json(Json(SuccessResponse {
-            success: true,
-            message: "Newsletter published".to_owned(),
-            data: None,
-        })),
-    )
+    let response = HttpResponse::build(StatusCode::OK).json(Json(SuccessResponse {
+        success: true,
+        message: "Newsletter published".to_owned(),
+        data: None,
+    }));
+
+    let response = save_response(&db, &idempotency_key, *user_id, response)
+        .await
+        .map_err(PublishError::UnexpectedError)?;
+
+    Ok(response)
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip_all)]
