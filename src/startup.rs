@@ -14,9 +14,8 @@ use crate::{
     configuration::{AppEnvironment, Configuration, DatabaseConfiguration},
     email_client::EmailClient,
     middleware::{
-        auth_middleware::{self, auth_middleware},
-        csrf_middleware::csrf_middleware,
-        idempotency_middleware::{self, idempotency_middleware},
+        auth_middleware::auth_middleware, csrf_middleware::csrf_middleware,
+        idempotency_middleware::idempotency_middleware,
     },
     routes::{
         admin_dashboard::{

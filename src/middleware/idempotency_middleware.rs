@@ -22,7 +22,7 @@ pub async fn idempotency_middleware(
         return Err(e400(TXT_IDEM_INVALID));
     };
 
-    let idem_key: IdempotencyKey = idem_key.to_owned().try_into().map_err(|e| e400(e))?;
+    let idem_key: IdempotencyKey = idem_key.to_owned().try_into().map_err(e400)?;
 
     req.extensions_mut().insert(idem_key);
 

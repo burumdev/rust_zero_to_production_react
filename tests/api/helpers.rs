@@ -27,6 +27,7 @@ impl TestApp {
             .post(&format!("{}/api/admin/password", &self.address))
             .header("Content-Type", "application/json")
             .header("X-CSRF-Token", self.csrf_token.as_str())
+            .header("Idempotency-Key", Uuid::new_v4().to_string())
             .body(json_str.to_owned())
             .send()
             .await
@@ -41,6 +42,7 @@ impl TestApp {
             .post(&format!("{}/api/admin/logout", &self.address))
             .header("Content-Type", "application/json")
             .header("X-CSRF-Token", self.csrf_token.as_str())
+            .header("Idempotency-Key", Uuid::new_v4().to_string())
             .send()
             .await
             .expect("Failed to execute request.");
@@ -53,6 +55,7 @@ impl TestApp {
             .api_client
             .post(format!("{}/api/admin/newsletters", &self.address))
             .header("X-CSRF-Token", self.csrf_token.as_str())
+            .header("Idempotency-Key", Uuid::new_v4().to_string())
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
@@ -68,6 +71,7 @@ impl TestApp {
             .post(&format!("{}/api/login", &self.address))
             .header("Content-Type", "application/json")
             .header("X-CSRF-Token", self.csrf_token.as_str())
+            .header("Idempotency-Key", Uuid::new_v4().to_string())
             .body(json_str.to_owned())
             .send()
             .await
@@ -82,6 +86,7 @@ impl TestApp {
             .post(&format!("{}/api/subscriptions", &self.address))
             .header("Content-Type", "application/json")
             .header("X-CSRF-Token", self.csrf_token.as_str())
+            .header("Idempotency-Key", Uuid::new_v4().to_string())
             .body(json_str.to_owned())
             .send()
             .await

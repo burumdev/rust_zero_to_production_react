@@ -79,7 +79,6 @@ async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
 #[tokio::test]
 async fn it_delivers_newsletters_to_confirmed_subscribers() {
     let test_app = spawn_app().await;
-
     test_app.test_user.login(&test_app).await;
 
     let response = create_confirmed_subscriber(&test_app).await;
@@ -128,6 +127,8 @@ async fn it_returns_400_for_invalid_newsletter_data() {
 #[tokio::test]
 async fn it_idempotently_handles_newsletter_creation() {
     let test_app = spawn_app().await;
+    test_app.test_user.login(&test_app).await;
+
     let response = create_confirmed_subscriber(&test_app).await;
     assert_eq!(response.status().as_u16(), 200);
 
@@ -140,7 +141,8 @@ async fn it_idempotently_handles_newsletter_creation() {
     let response = test_app.post_newsletters(newsletter_body.clone()).await;
     assert_eq!(response.status().as_u16(), 200);
 
-    todo!();
+    //TODO: Check if sending the same request with same payload will return
+    // 409 conflict code from the handler. Middleware should handle this case opaquely.
     // let response = test_app.post_newsletters(newsletter_body).await;
-    // assert_eq!(response.status().as_u16(), 200);
+    // assert_eq!(response.status().as_u16(), 409);
 }

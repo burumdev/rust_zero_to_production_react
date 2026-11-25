@@ -12,6 +12,7 @@ If you need a scaffolding to base something on, the original project github repo
 * Mailtrap API for email testing instead of Postmark. The free tier supports only text based emails.
 * Email testing is done based on direct response from Mailtrap server instead of a mock server.
 Successful mailtrap API send requests return a list of `message_id`s and this `message_id` is used to further query Mailtrap API for text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
+* Running all tests at once with `cargo test` command might result in 429 too many requests from the Mailtrap server. It is better to run email bearing tests in groups with commands like `cargo test newsletter` or `cargo test subscriptions` instead.
 * Since frontend is SPA, mutation requests are JSON based instead of url-encoded forms
 * CSRF protection is handled with a custom HMAC middleware
 * The `modname/mod.rs` directory structure is not used. The more preferred approach `modname.rs` in root and submodules in `modname` directory is used.
