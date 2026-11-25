@@ -98,7 +98,6 @@ const Account = () => {
           <div className="mt-6 h-forminput">
             <TextInput
               placeholder="New Password*"
-              isFocused
               onChange={(e: any) =>
                 setFormField('new_password', e.target.value)
               }
@@ -110,7 +109,6 @@ const Account = () => {
           <div className="mt-6 h-forminput">
             <TextInput
               placeholder="New Password Again*"
-              isFocused
               onChange={(e: any) =>
                 setFormField('new_password_check', e.target.value)
               }

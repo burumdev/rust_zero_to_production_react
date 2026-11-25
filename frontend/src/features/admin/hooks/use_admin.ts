@@ -17,16 +17,9 @@ import useIdempotencyKey from '../../../hooks/useIdempotencyKey';
 import { RETRY_DEFAULT } from '../../../constants';
 
 export const useAdminLogin = () => {
-  const idemKey = useIdempotencyKey();
-
   return useMutation({
     mutationKey: ['adminLogin'],
-    mutationFn: (payload: AdminLoginRequest) =>
-      postAdminLogin(payload, idemKey.getOrCreateKey()),
-    retry: RETRY_DEFAULT,
-    onSuccess: () => {
-      idemKey.clearKey();
-    },
+    mutationFn: (payload: AdminLoginRequest) => postAdminLogin(payload),
   });
 };
 

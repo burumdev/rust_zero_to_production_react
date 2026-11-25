@@ -141,15 +141,11 @@ async fn run(
                     .route("/subscriptions/confirm", web::get().to(confirm))
                     .route("/health_check", web::get().to(health_check))
                     .route("/csrf_cookie", web::get().to(csrf_cookie))
-                    .service(
-                        web::resource("/login")
-                            .wrap(from_fn(idempotency_middleware))
-                            .route(web::post().to(login)),
-                    )
+                    .route("/login", web::post().to(login))
                     .service(
                         web::scope("/admin")
-                            .wrap(from_fn(auth_middleware))
                             .wrap(from_fn(idempotency_middleware))
+                            .wrap(from_fn(auth_middleware))
                             .route("/newsletters", web::post().to(publish_newsletter))
                             .route("/password", web::post().to(change_password))
                             .route("/logout", web::post().to(log_out)),

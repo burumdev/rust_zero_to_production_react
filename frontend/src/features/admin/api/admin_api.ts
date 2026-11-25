@@ -6,18 +6,11 @@ import type {
 import { apiFetch } from '@utils/api_client';
 import type { MutationResponse } from '../../../common_types';
 
-export const postAdminLogin = async (
-  data: AdminLoginRequest,
-  idemKey: string,
-) => {
-  return apiFetch<MutationResponse>(
-    'login',
-    {
-      method: 'POST',
-      body: JSON.stringify(data),
-    },
-    idemKey,
-  );
+export const postAdminLogin = async (data: AdminLoginRequest) => {
+  return apiFetch<MutationResponse>('login', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 };
 
 export const postAdminLogout = async (idemKey: string) => {
