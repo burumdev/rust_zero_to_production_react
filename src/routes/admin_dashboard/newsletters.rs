@@ -11,7 +11,6 @@ use crate::{
     constants::TXT_TECHNICAL_ERROR,
     domain::{common::SuccessResponse, subscriber::ValidEmail},
     email_client::EmailClient,
-    idempotency::{key::IdempotencyKey, persistence::save_response},
     middleware::UserId,
     utils::error_chain_fmt,
 };
@@ -74,7 +73,6 @@ pub async fn publish_newsletter(
     db: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     user_id: web::ReqData<UserId>,
-    idempotency_key: web::ReqData<IdempotencyKey>,
 ) -> Result<HttpResponse, PublishError> {
     let user_id = user_id.into_inner();
     let username = get_stored_username(*user_id, &db)
@@ -110,10 +108,6 @@ pub async fn publish_newsletter(
         message: "Newsletter published".to_owned(),
         data: None,
     }));
-
-    let response = save_response(&db, &idempotency_key, *user_id, response)
-        .await
-        .map_err(PublishError::UnexpectedError)?;
 
     Ok(response)
 }

@@ -9,14 +9,12 @@ If you need a scaffolding to base something on, the original project github repo
 ## Differences with the original project
 * Added a UI in `frontend` directory built with React, Rsbuild, Tanstack Query for React, React Router and Tailwindcss.
 * Added docker compose setup for easier ops and communication between app docker and database docker in local development environment. So it is easy to test the app in both development and production mode in local.
+* CSRF protection is handled with a custom HMAC middleware
+* Idempotency key checks, response storage and early returns with stored responses are handled with a custom idempotency middleware
 * Mailtrap API for email testing instead of Postmark. The free tier supports only text based emails.
 * Email testing is done based on direct response from Mailtrap server instead of a mock server.
 Successful mailtrap API send requests return a list of `message_id`s and this `message_id` is used to further query Mailtrap API for text contents of the email in test inbox (sandbox). I think this is a better and more realistic way to test email based user stories.
-* Running all tests at once with `cargo test` command might result in 429 too many requests (or idempotency failure) from the Mailtrap server.
-It is better to run email bearing tests in groups with commands like `cargo test newsletter` or `cargo test subscriptions` instead.
-Or better still run the full test suite with a single thread: `cargo test -- --test-threads=1`
 * Since frontend is SPA, mutation requests are JSON based instead of url-encoded forms
-* CSRF protection is handled with a custom HMAC middleware
 * The `modname/mod.rs` directory structure is not used. The more preferred approach `modname.rs` in root and submodules in `modname` directory is used.
 * DigitalOcean deployment setup is omitted
 * SSL support is disabled
@@ -40,3 +38,10 @@ There's also another `.env-example` for the frontend in `frontend` directory tha
 * Run `docker compose up`
 * Run `sqlx migrate run`
 * Navigate to `http://localhost:8000` to view the production build of the frontend
+
+# Testing
+* Running all tests at once with `cargo test` command might result in 429 too many requests (or idempotency failure) from the Mailtrap server.
+It is better to run email bearing tests in groups with commands like `cargo test newsletter` or `cargo test subscriptions` instead.
+Or better still run the full test suite with a single thread: `cargo test -- --test-threads=1`
+* Some tests have delays at the beginning to keep Mailtrap's API from returning 429 too many requests.
+The delay is set conservatively as 5 seconds. Tests might take some extra time because of that, but better safe than sorry.

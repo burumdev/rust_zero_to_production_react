@@ -25,6 +25,7 @@ pub struct FormDataChangePassword {
 }
 
 #[derive(thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 enum AdminPasswordError {
     #[error("Password mismatch")]
     PasswordMismatchError,

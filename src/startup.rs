@@ -94,6 +94,7 @@ pub struct ApplicationBaseUrl(pub String);
 pub struct ApplicationPort(pub u16);
 pub struct ApplicationHmacSecret(pub SecretString);
 
+#[allow(clippy::too_many_arguments)]
 async fn run(
     listener: TcpListener,
     db: PgPool,

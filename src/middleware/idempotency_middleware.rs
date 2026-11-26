@@ -1,7 +1,7 @@
 use actix_session::SessionExt;
 use actix_web::{
-    Error, HttpMessage,
-    body::EitherBody,
+    Error,
+    body::{BoxBody, EitherBody, MessageBody},
     dev::{ServiceRequest, ServiceResponse},
     middleware::Next,
     web::Data,
@@ -10,16 +10,19 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    idempotency::{key::IdempotencyKey, persistence::get_saved_response},
+    idempotency::{
+        key::IdempotencyKey,
+        persistence::{NextAction, save_response, try_processing},
+    },
     utils::{e400, e500},
 };
 
 const TXT_IDEM_INVALID: &str = "Idempotency key invalid";
 
-pub async fn idempotency_middleware<B>(
+pub async fn idempotency_middleware<B: MessageBody>(
     req: ServiceRequest,
     next: Next<B>,
-) -> Result<ServiceResponse<EitherBody<B>>, Error> {
+) -> Result<ServiceResponse<EitherBody<BoxBody>>, Error> {
     let idem_header = req
         .headers()
         .get("Idempotency-Key")
@@ -36,17 +39,18 @@ pub async fn idempotency_middleware<B>(
     // and database connection should be up and running
     let user_id = req.get_session().get::<Uuid>("user_id").unwrap().unwrap();
     let db = req.app_data::<Data<PgPool>>().unwrap();
-    if let Some(saved_response) = get_saved_response(&db, &idem_key, user_id)
-        .await
-        .map_err(e500)?
-    {
-        return Ok(req.into_response(saved_response).map_into_right_body());
+
+    match try_processing(db, &idem_key, user_id).await.map_err(e500)? {
+        NextAction::StartProcessing(transaction) => {
+            let service_response = next.call(req).await?;
+            let (http_request, http_response) = service_response.into_parts();
+            let http_response = save_response(transaction, &idem_key, user_id, http_response);
+
+            Ok(ServiceResponse::new(
+                http_request,
+                http_response.await.map_err(e500)?,
+            ))
+        }
+        NextAction::ReturnSavedResponse(sr) => Ok(req.into_response(sr).map_into_right_body()),
     }
-
-    req.extensions_mut().insert(idem_key);
-
-    let normal_response = next.call(req).await?;
-
-    // post-processing
-    Ok(normal_response.map_into_left_body())
 }

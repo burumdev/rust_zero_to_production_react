@@ -1,7 +1,8 @@
 use linkify::{LinkFinder, LinkKind};
+use uuid::Uuid;
 use zero2prod::{domain::common::SuccessResponse, email_client::EmailSuccessResponse};
 
-use crate::helpers::{TestApp, spawn_app};
+use crate::helpers::{TestApp, spawn_app, wait_secs};
 
 async fn create_unconfirmed_subscriber(test_app: &TestApp) -> reqwest::Response {
     // Create an unconfirmed (default) subscriber
@@ -56,6 +57,7 @@ async fn create_confirmed_subscriber(test_app: &TestApp) -> reqwest::Response {
 
 #[tokio::test]
 async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
+    wait_secs(5).await;
     let test_app = spawn_app().await;
 
     test_app.test_user.login(&test_app).await;
@@ -68,7 +70,7 @@ async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
         "content": "Newsletter body.",
     });
 
-    let response = test_app.post_newsletters(newsletter_body).await;
+    let response = test_app.post_newsletters(newsletter_body, None).await;
 
     // The request should return 200 as it will silently avoid sending
     // newsletters to unconfirmed subscribers.
@@ -78,6 +80,7 @@ async fn it_doesnt_deliver_newsletters_to_unconfirmed_subscribers() {
 
 #[tokio::test]
 async fn it_delivers_newsletters_to_confirmed_subscribers() {
+    wait_secs(5).await;
     let test_app = spawn_app().await;
     test_app.test_user.login(&test_app).await;
 
@@ -89,13 +92,14 @@ async fn it_delivers_newsletters_to_confirmed_subscribers() {
         "content": "Newsletter body.",
     });
 
-    let response = test_app.post_newsletters(newsletter_body).await;
+    let response = test_app.post_newsletters(newsletter_body, None).await;
 
     assert_eq!(response.status().as_u16(), 200);
 }
 
 #[tokio::test]
 async fn it_returns_400_for_invalid_newsletter_data() {
+    wait_secs(5).await;
     let test_app = spawn_app().await;
     test_app.test_user.login(&test_app).await;
 
@@ -113,7 +117,7 @@ async fn it_returns_400_for_invalid_newsletter_data() {
     ];
 
     for (invalid_body, error_message) in test_cases {
-        let response = test_app.post_newsletters(invalid_body).await;
+        let response = test_app.post_newsletters(invalid_body, None).await;
 
         assert_eq!(
             response.status().as_u16(),
@@ -126,6 +130,7 @@ async fn it_returns_400_for_invalid_newsletter_data() {
 
 #[tokio::test]
 async fn it_idempotently_handles_newsletter_creation() {
+    wait_secs(5).await;
     let test_app = spawn_app().await;
     test_app.test_user.login(&test_app).await;
 
@@ -138,11 +143,39 @@ async fn it_idempotently_handles_newsletter_creation() {
         "idempotency_key": &uuid::Uuid::new_v4().to_string()
     });
 
-    let response = test_app.post_newsletters(newsletter_body.clone()).await;
+    let response = test_app
+        .post_newsletters(newsletter_body.clone(), None)
+        .await;
     assert_eq!(response.status().as_u16(), 200);
 
-    //TODO: Check if sending the same request with same payload will return
-    // 409 conflict code from the handler. Middleware should handle this case opaquely.
-    // let response = test_app.post_newsletters(newsletter_body).await;
-    // assert_eq!(response.status().as_u16(), 409);
+    let response = test_app
+        .post_newsletters(newsletter_body.clone(), None)
+        .await;
+    assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn it_handles_concurrent_form_submissions_gracefully() {
+    wait_secs(5).await;
+    let test_app = spawn_app().await;
+    create_confirmed_subscriber(&test_app).await;
+    test_app.test_user.login(&test_app).await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "content": "Newsletter body as plain text",
+    });
+
+    let idem_key = Uuid::new_v4().to_string();
+    let response1 =
+        test_app.post_newsletters(newsletter_request_body.clone(), Some(idem_key.clone()));
+    let response2 = test_app.post_newsletters(newsletter_request_body, Some(idem_key));
+
+    let (response1, response2) = tokio::join!(response1, response2);
+
+    assert_eq!(response1.status(), response2.status());
+    assert_eq!(
+        response1.text().await.unwrap(),
+        response2.text().await.unwrap()
+    );
 }

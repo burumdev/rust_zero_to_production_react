@@ -1,7 +1,8 @@
-use std::sync::LazyLock;
+use std::{sync::LazyLock, time::Duration};
 
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::{Connection, PgConnection, PgPool};
+use tokio::time::sleep;
 use uuid::Uuid;
 use zero2prod::{
     authentication::compute_password_hash,
@@ -50,12 +51,21 @@ impl TestApp {
         response
     }
 
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    // The function takes an optional idempotency key as input
+    // to test conditions where idempotency keys are the same
+    // like duplicated requests. Otherwise it will send the
+    // request with a different key each time.
+    pub async fn post_newsletters(
+        &self,
+        body: serde_json::Value,
+        idem_key: Option<String>,
+    ) -> reqwest::Response {
+        let idem_key = idem_key.unwrap_or(Uuid::new_v4().to_string());
         let response = self
             .api_client
             .post(format!("{}/api/admin/newsletters", &self.address))
             .header("X-CSRF-Token", self.csrf_token.as_str())
-            .header("Idempotency-Key", Uuid::new_v4().to_string())
+            .header("Idempotency-Key", idem_key)
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
             .json(&body)
             .send()
@@ -243,4 +253,8 @@ async fn configure_database(config: &DatabaseConfiguration) {
         .run(&connection)
         .await
         .expect("Failed to migrate the database");
+}
+
+pub async fn wait_secs(secs: u64) {
+    sleep(Duration::from_secs(secs)).await;
 }
